@@ -11,11 +11,13 @@ if ($argc==2 && $argv[1]=="--help")
 
 $line=fgets(STDIN);
 $firstline=explode(PHP_EOL,$line); //oddeleni pomoci konce radku => na prvni pozici pak musi byt .IPPcode21
-echo $firstline[0]."\n"; //DEBUG PRINT
+#echo $firstline[0]."\n"; //DEBUG PRINT
 
 if($firstline[0]==".IPPcode21")
     {
-        echo "ok";
+        
+        echo "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<program language=\"IPPcode21\">\n";
+
     }
     else  
     {
@@ -24,9 +26,15 @@ if($firstline[0]==".IPPcode21")
 
 while ($line=fgets(STDIN))
     {
-        $line=str_replace(PHP_EOL,"",$line);
-        $splitted=explode(" ",$line); 
-        echo $splitted[0]."\n";
+        $line=str_replace(PHP_EOL,"",$line); //odstraneni EOLu
+        $line = explode("#",$line); //smazani komentaru
+        $splitted=explode(" ",$line[0]); //odmazani bilych znaku
+        if($splitted[0]!=NULL)
+        {
+            echo $splitted[0]."\n";
+        }
+       
+    
     }
   
 ?>
