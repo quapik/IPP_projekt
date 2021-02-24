@@ -11,12 +11,23 @@ function checkVar($var){
    return false;
    
     }
+function instructionStart($poradi,$opcode)
+    {
+        echo"\t<instruction order=\"$poradi\" opcode=\"$opcode\">\n";
+    }
+function instructionEnd()
+    {
+        echo"\t</instruction>\n";
+    }    
+   
 function checkSymbol($symbol){
     if(preg_match("/^(TF|GF|LF)@[A-Za-z$?!&%*\-_][A-Za-z0-9\w$?!&%*\-_]*$/",$symbol)
     ||preg_match("/^int@[+-]?[0-9]+$/",$symbol)
     ||preg_match("/^bool@(true|false)$/",$symbol)
     ||preg_match("/^nil@nil$/",$symbol)
-    ||preg_match("/^string@$/",$symbol)) //TODO
+    ||preg_match("/^string@$/",$symbol)
+    ||preg_match("/^string@(.)*$/",$symbol)
+    ) //TODO
     {
         /*$checkType=explode("@",$symbol);
         echo $checkType[0].PHP_EOL;
@@ -26,6 +37,28 @@ function checkSymbol($symbol){
     }
     return false;
 }   
+#funkce na print symbolu jako argument
+function SymbolPrint($symbol,$number)
+{
+    $type=explode("@",$symbol);
+    if($type[0]=="string"||$type[0]=="int"||$type[0]=="nil"||$type[0]=="float"||$type[0]=="bool")
+        {
+            if($type[1]==NULL&&$type[0]=="string")
+            {
+                echo "\t\t<arg$number type=\"$type[0]\"/>\n";
+            }
+            else
+            {
+                echo "\t\t<arg$number type=\"$type[0]\">$type[1]</arg$number>\n";
+            }
+           
+        }
+        else
+        {
+            echo "\t\t<arg$number type=\"var\">$type[0]@$type[1]</arg$number>\n";
+        }
+    
+}
     
 $counter = 0;
 $labels = [];
@@ -37,24 +70,8 @@ if ($argc==2 && $argv[1]=="--help")
     exit(0);
     }
 
-//$line=fgets(STDIN);
-//$firstline=explode(PHP_EOL,$line); //oddeleni pomoci konce radku => na prvni pozici pak musi byt .IPPcode21
-#echo $firstline[0]."\n"; //DEBUG PRINT
-
-/*if($firstline[0]==".IPPcode21") //todo predelat (pred timto muzou byt komentare)
-    {
-        
-        echo "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<program language=\"IPPcode21\">\n";
-
-    }
-    else  
-    {
-        echo "chyba";
-        exit(21);
-    }
-    */
     $BylIPPcode=false;
-    while (($firstline=fgets(STDIN))&&$BylIPPcode==false) //while prochazejici dokuď jsou komentare nebo prazdne radky pred .IPPcode21 (pokud instrukce, chyba)
+    while (($BylIPPcode==false&&$firstline=fgets(STDIN))) //while prochazejici dokuď jsou komentare nebo prazdne radky pred .IPPcode21 (pokud instrukce, chyba)
     {
         $firstline=str_replace(PHP_EOL,"",$firstline); //odstraneni EOLu
         $firstline = explode("#",$firstline); //smazani komentaru
@@ -63,6 +80,7 @@ if ($argc==2 && $argv[1]=="--help")
         if($firstline[0]==".IPPcode21")
         {
             $BylIPPcode=true;
+            echo "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<program language=\"IPPcode21\">\n";
         }
         else if ($firstline[0]!=NULL) //komentare vynulovany
         {
@@ -83,7 +101,7 @@ while ($line=fgets(STDIN))
         $word[0]=strtoupper($word[0]); //neni case sensitive
         if($word[0]!=NULL)  //pokud neni prazdny radek => bude instrukce
         {
-            //echo $word[0]."\n"; DEBUG
+            //echo $word[0]."\n"; //DEBUG
             $counter=$counter+1;
 
             switch ($word[0]){
@@ -102,7 +120,6 @@ while ($line=fgets(STDIN))
                     }
                     else
                     {
-                        
                         echo "\033[31m chyba DEFVAR variable \033[0m  \n"; //DEBUG
                         exit(23);
                     }
@@ -113,13 +130,13 @@ while ($line=fgets(STDIN))
                     {
                         echo"\t<instruction order=\"$counter\" opcode=\"$word[0]\">\n";
                         echo "\t\t<arg1 type=\"var\">$word[1]</arg1>\n";
-                       // TODO echo "\t\t<arg2 type=\"var\">$word[2]</arg2>\n";
+                        SymbolPrint($word[2],2);
                         echo"\t</instruction>\n";
-                       // echo "\033[31m MOVE OK \033[0m  \n"; //DEBUG
                     }
                     else
-                    {
-                       // echo "\033[31m MOVE NOT OK  \033[0m  \n"; //DEBUG
+                    {             
+                        echo "\033[31m MOVE NOT OK  \033[0m  \n"; //DEBUG
+                        exit(23);
                     }
                     break;
 
@@ -143,7 +160,7 @@ while ($line=fgets(STDIN))
                     else
                     {
                         echo "\033[31m chyba LABEL \033[0m  \n"; //DEBUG
-                        //TODO ERROR
+                        exit(23);
                     }
                     break;
                 case "JUMP":
@@ -153,26 +170,77 @@ while ($line=fgets(STDIN))
                         echo"\t<instruction order=\"$counter\" opcode=\"$word[0]\">\n";
                         echo "\t\t<arg1 type=\"label\">$word[1]</arg1>\n";
                         echo"\t</instruction>\n";
-
                     }
                     break;
-                 default:
+                 
                  //TODO error
+                 case "JUMPIFEQ":
+                 case "JUMPIFNEQ":
+
+                    if($word[0]!=NULL&&checkSymbol($word[2])==true&&checkSymbol($word[3])==true&&$word[4]==NULL)
+                    {
+                        echo"\t<instruction order=\"$counter\" opcode=\"$word[0]\">\n";
+                        echo "\t\t<arg1 type=\"label\">$word[1]</arg1>\n"; //label na ktery se skace 
+                        $labelsJump[] = $word[1]; //pridani do pole jumpLabelu
+                        SymbolPrint($word[2],2); //arg2 arg3
+                        SymbolPrint($word[3],3);
+                        echo"\t</instruction>\n";
+
+                    }
+                    else
+                        {
+                            echo "\033[31m chyba JUMPIFNEQ \033[0m  \n"; //DEBUG
+                            exit(23);
+                        }
+                    break;
+                    case "EXIT": // <symb>
+                        if($word[1]!=NULL&&$word[2]==NULL)
+                        {
+                            $exitCodeCheck=explode("@",$word[1]);
+                            if($exitCodeCheck[0]=="int" && $exitCodeCheck[1]>=0 && $exitCodeCheck[1]<=49) //pouze int v rozsahu 0-49
+                            {
+                                echo"\t<instruction order=\"$counter\" opcode=\"$word[0]\">\n";
+                                echo "\t\t<arg1 type=\"int\">$exitCodeCheck[1]</arg1>\n";
+                                echo"\t</instruction>\n";
+                            }
+                            else
+                            {
+                                echo "\033[31m chyba EXIT \033[0m  \n"; //DEBUG
+                                exit(57);
+                            }
+                        }
+                        else
+                        {
+                            exit(23);
+                        }
+                        break;
+                    case "DPRINT": //<symb>
+                        
+                        if((checkSymbol($word[1])!=true)||$word[2]!=NULL)
+                        {
+                            echo "\033[31m chyba DPRINT \033[0m  \n"; //DEBUG
+                            exit(23);             
+                        }
+                        instructionStart($counter,$word[0]);
+                        SymbolPrint($word[1],1);
+                        instructionEnd();
+
+                        break;
+    
+                default:   
+                
                    
     
      
     
                        
-            }
+            }  //konec switche
 
 
-        
-
-
+    
         } //konec ifu pokud neni prazdny radek => bude instrukce
        
-        
-    
+          
     } //konec main whilu
     
     #kontrola zda jumpy odkazuji na definovana navesti
@@ -192,7 +260,10 @@ while ($line=fgets(STDIN))
                 echo "\033[31m jump na neexistujici label \033[0m  \n"; //DEBUG
                 exit(51);
             }
-        }
+        } //foreach konec 
+
+
+
         echo  "\033[32mOK\033[0m \n"; //DEBUG
         exit(0);
   
