@@ -57,7 +57,10 @@ function SymbolPrint($symbol,$number)
         {
             echo "\t\t<arg$number type=\"var\">$type[0]@$type[1]</arg$number>\n";
         }
-    
+}
+function VarPrint($variable,$number)
+{
+    echo "\t\t<arg$number type=\"var\">$variable</arg$number>\n";
 }
     
 $counter = 0;
@@ -80,7 +83,7 @@ if ($argc==2 && $argv[1]=="--help")
         if($firstline[0]==".IPPcode21")
         {
             $BylIPPcode=true;
-            echo "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<program language=\"IPPcode21\">\n";
+            echo "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<program language=\"IPPcode21\">\n";
         }
         else if ($firstline[0]!=NULL) //komentare vynulovany
         {
@@ -174,7 +177,7 @@ while ($line=fgets(STDIN))
                     break;
                  
                  //TODO error
-                 case "JUMPIFEQ":
+                 case "JUMPIFEQ": //<label> <symb> <symb>
                  case "JUMPIFNEQ":
 
                     if($word[0]!=NULL&&checkSymbol($word[2])==true&&checkSymbol($word[3])==true&&$word[4]==NULL)
@@ -214,8 +217,7 @@ while ($line=fgets(STDIN))
                             exit(23);
                         }
                         break;
-                    case "DPRINT": //<symb>
-                        
+                    case "DPRINT": //<symb>         
                         if((checkSymbol($word[1])!=true)||$word[2]!=NULL)
                         {
                             echo "\033[31m chyba DPRINT \033[0m  \n"; //DEBUG
@@ -226,8 +228,71 @@ while ($line=fgets(STDIN))
                         instructionEnd();
 
                         break;
+
+                    case "BREAK":  //<>
+                        
+                        break;
+                    case "WRITE": //<symb>
+                        if(checkSymbol($word[1])!=true||$word[2]!=NULL)
+                        {
+                            echo "\033[31m chyba WRITE \033[0m  \n"; //DEBUG
+                            exit(23);  
+                        }
+                        instructionStart($counter,$word[0]);
+                        SymbolPrint($word[1],1);
+                        instructionEnd();
+                        break;
+                        
+                    case "READ": //⟨var⟩ ⟨type⟩
+                        
+                        
+                        break;
+
+                    case "CONCAT": //⟨var⟩ ⟨symb1⟩ ⟨symb2⟩
+                        if(checkVar($word[1])!=true||checkSymbol($word[2])!=true||checkSymbol($word[3])!=true||$word[4]!=NULL)
+                        {
+                            echo "\033[31m chyba CONCAT \033[0m  \n"; //DEBUG
+                            exit(23);  
+                        }
+                        instructionStart($counter,$word[0]);
+                        echo "\t\t<arg1 type=\"var\">$word[1]</arg1>\n";
+                        SymbolPrint($word[2],2);
+                        SymbolPrint($word[3],3);
+                        instructionEnd();
+                        break;
+
+                    case "STRLEN": //⟨var⟩ ⟨symb⟩ 
+                        if(checkVar($word[1])!=true||checkSymbol($word[2])!=true||$word[3]!=NULL)
+                        {
+                            echo "\033[31m chyba STRLEN \033[0m  \n"; //DEBUG
+                            exit(23);  
+                        }
+                        instructionStart($counter,$word[0]);
+                        VarPrint($word[1],1);
+                        SymbolPrint($word[2],2);
+                        instructionEnd();
+                    break;
+
+                    case "GETCHAR": //⟨var⟩ ⟨symb1⟩ ⟨symb2⟩
+                    case "SETCHAR":    
+                        if(checkVar($word[1])!=true||checkSymbol($word[2])!=true||checkSymbol($word[3])!=true||$word[4]!=NULL)
+                        {
+                            echo "\033[31m chyba GETCHAR \033[0m  \n"; //DEBUG
+                            exit(23);  
+                        }
+                        instructionStart($counter,$word[0]);
+                        VarPrint($word[1],1);
+                        SymbolPrint($word[2],2);
+                        SymbolPrint($word[3],3);
+                        instructionEnd();
+                        //TODO chceck STRLEN podle zadani!!!!!!
+                        
+                        break;
+
     
                 default:   
+                    echo "\033[31m DEFAULT - neznamy operacni kod \033[0m  \n"; //DEBUG
+                    exit(22);
                 
                    
     
@@ -264,7 +329,9 @@ while ($line=fgets(STDIN))
 
 
 
-        echo  "\033[32mOK\033[0m \n"; //DEBUG
+       
+        echo "</program>";
+        //echo  "\033[32mOK\033[0m \n"; //DEBUG
         exit(0);
   
 ?>
