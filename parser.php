@@ -28,17 +28,20 @@ function checkSymbol($symbol){
 }   
     
 $counter = 0;
+$labels = [];
+$labelsJump=[];
+
 if ($argc==2 && $argv[1]=="--help")
     {
     echo "Zde bude napoveda";
     exit(0);
     }
 
-$line=fgets(STDIN);
-$firstline=explode(PHP_EOL,$line); //oddeleni pomoci konce radku => na prvni pozici pak musi byt .IPPcode21
+//$line=fgets(STDIN);
+//$firstline=explode(PHP_EOL,$line); //oddeleni pomoci konce radku => na prvni pozici pak musi byt .IPPcode21
 #echo $firstline[0]."\n"; //DEBUG PRINT
 
-if($firstline[0]==".IPPcode21") //todo predelat (pred timto muzou byt komentare)
+/*if($firstline[0]==".IPPcode21") //todo predelat (pred timto muzou byt komentare)
     {
         
         echo "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<program language=\"IPPcode21\">\n";
@@ -49,23 +52,51 @@ if($firstline[0]==".IPPcode21") //todo predelat (pred timto muzou byt komentare)
         echo "chyba";
         exit(21);
     }
+    */
+    $BylIPPcode=false;
+    while (($firstline=fgets(STDIN))&&$BylIPPcode==false) //while prochazejici dokuď jsou komentare nebo prazdne radky pred .IPPcode21 (pokud instrukce, chyba)
+    {
+        $firstline=str_replace(PHP_EOL,"",$firstline); //odstraneni EOLu
+        $firstline = explode("#",$firstline); //smazani komentaru
+        
+        
+        if($firstline[0]==".IPPcode21")
+        {
+            $BylIPPcode=true;
+        }
+        else if ($firstline[0]!=NULL) //komentare vynulovany
+        {
+            echo "\033[31m instrukce pred IPPcode \033[0m  \n"; //DEBUG
+            exit(21); //todo oopravdu 21?
+        }
+
+    }
+    
 
 while ($line=fgets(STDIN))
     {
         $line=str_replace(PHP_EOL,"",$line); //odstraneni EOLu
         $line = explode("#",$line); //smazani komentaru
         $word=explode(" ",$line[0]); //odmazani bilych znaku
+
+
         $word[0]=strtoupper($word[0]); //neni case sensitive
         if($word[0]!=NULL)  //pokud neni prazdny radek => bude instrukce
         {
-            //echo $splitted[0]."\n";
+            //echo $word[0]."\n"; DEBUG
             $counter=$counter+1;
 
             switch ($word[0]){
+
+                case ".IPPCODE21":
+                    echo "\033[31m hlavicka podruhe \033[0m  \n"; //DEBUG
+                    exit(21);
+                    break;
+
                 case "DEFVAR": //TODO Specialni znaky?
                     if(checkVar($word[1])==true) //nesmi zacinat cislem 
                     {
-                        echo"\t<instruction order=\"$counter\" opcode=\"$word[1]\">\n";
+                        echo"\t<instruction order=\"$counter\" opcode=\"$word[0]\">\n";
                         echo "\t\t<arg1 type=\"var\">$word[1]</arg1>\n";
                         echo"\t</instruction>\n";
                     }
@@ -80,7 +111,7 @@ while ($line=fgets(STDIN))
                 case "MOVE":
                     if((checkVar($word[1])==true)&&(checkSymbol($word[2])==true))
                     {
-                        echo"\t<instruction order=\"$counter\" opcode=\"$word[1]\">\n";
+                        echo"\t<instruction order=\"$counter\" opcode=\"$word[0]\">\n";
                         echo "\t\t<arg1 type=\"var\">$word[1]</arg1>\n";
                        // TODO echo "\t\t<arg2 type=\"var\">$word[2]</arg2>\n";
                         echo"\t</instruction>\n";
@@ -94,7 +125,18 @@ while ($line=fgets(STDIN))
 
                 case "LABEL":
                     if (($word[2]==NULL)&&$word[1]!=NULL)
-                    {   echo"\t<instruction order=\"$counter\" opcode=\"$word[1]\">\n";
+                    {   
+                        foreach ($labels as $label)
+                        {
+                            if ($label==$word[1])
+                            {
+                                echo "\033[31m LABEL $word[1] PODRUHE \033[0m  \n"; //DEBUG
+                                exit(52);
+                            }
+
+                        }
+                        $labels[] = $word[1];
+                        echo"\t<instruction order=\"$counter\" opcode=\"$word[0]\">\n";
                         echo "\t\t<arg1 type=\"label\">$word[1]</arg1>\n";
                         echo"\t</instruction>\n";
                     }
@@ -103,6 +145,17 @@ while ($line=fgets(STDIN))
                         echo "\033[31m chyba LABEL \033[0m  \n"; //DEBUG
                         //TODO ERROR
                     }
+                    break;
+                case "JUMP":
+                    if (($word[2]==NULL)&&$word[1]!=NULL)
+                    {  $labelsJump[] = $word[1];
+                        
+                        echo"\t<instruction order=\"$counter\" opcode=\"$word[0]\">\n";
+                        echo "\t\t<arg1 type=\"label\">$word[1]</arg1>\n";
+                        echo"\t</instruction>\n";
+
+                    }
+                    break;
                  default:
                  //TODO error
                    
@@ -112,18 +165,35 @@ while ($line=fgets(STDIN))
                        
             }
 
+
         
 
 
         } //konec ifu pokud neni prazdny radek => bude instrukce
        
-
         
-
-
-
-       
     
-    }
+    } //konec main whilu
+    
+    #kontrola zda jumpy odkazuji na definovana navesti
+    foreach ($labelsJump as $labelJump)
+        {         
+            $nalezenJump=false;
+            foreach ($labels as $label)
+            {  
+                if($label==$labelJump)
+                {
+                    $nalezenJump=true;
+                }
+            }
+
+            if( $nalezenJump==false)
+            {
+                echo "\033[31m jump na neexistujici label \033[0m  \n"; //DEBUG
+                exit(51);
+            }
+        }
+        echo  "\033[32mOK\033[0m \n"; //DEBUG
+        exit(0);
   
 ?>
