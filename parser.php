@@ -3,6 +3,7 @@
 #Vojtěch Šíma, xsimav01, IPP FIT VUT 2021
 ini_set('display_errors','stderr'); #varovani na stan. chybový výstup
 
+
 function checkVar($var){
     if(preg_match("/^(TF|GF|LF)@[A-Za-z$?!&%*\-_][A-Za-z0-9\w$?!&%*\-_]*$/",$var)) // spec znaku + pismena + cisla (ne na zacatku)
     {
@@ -13,11 +14,11 @@ function checkVar($var){
     }
 function instructionStart($poradi,$opcode)
     {
-        echo"\t<instruction order=\"$poradi\" opcode=\"$opcode\">\n";
+        echo"<instruction order=\"$poradi\" opcode=\"$opcode\">\n";
     }
 function instructionEnd()
     {
-        echo"\t</instruction>\n";
+        echo"</instruction>\n";
     }    
    
 function checkSymbol($symbol){
@@ -45,23 +46,28 @@ function SymbolPrint($symbol,$number)
         {
             if($type[1]==NULL&&$type[0]=="string")
             {
-                echo "\t\t<arg$number type=\"$type[0]\"/>\n";
+                echo "<arg$number type=\"$type[0]\"/>\n";
             }
             else
             {
-                echo "\t\t<arg$number type=\"$type[0]\">$type[1]</arg$number>\n";
+                echo "<arg$number type=\"$type[0]\">$type[1]</arg$number>\n";
             }
            
         }
         else
         {
-            echo "\t\t<arg$number type=\"var\">$type[0]@$type[1]</arg$number>\n";
+            echo "<arg$number type=\"var\">$type[0]@$type[1]</arg$number>\n";
         }
 }
 function VarPrint($variable,$number)
 {
-    echo "\t\t<arg$number type=\"var\">$variable</arg$number>\n";
+    echo "<arg$number type=\"var\">$variable</arg$number>\n";
 }
+function LabelPrint($labeltext,$number)
+{
+    echo "<arg$number type=\"label\">$labeltext</arg1>\n";
+}
+
     
 $counter = 0;
 $labels = [];
@@ -114,12 +120,12 @@ while ($line=fgets(STDIN))
                     exit(21);
                     break;
 
-                case "DEFVAR": //TODO Specialni znaky?
+                case "DEFVAR": //TODO Specialni znaky? <var>
                     if(checkVar($word[1])==true) //nesmi zacinat cislem 
                     {
-                        echo"\t<instruction order=\"$counter\" opcode=\"$word[0]\">\n";
-                        echo "\t\t<arg1 type=\"var\">$word[1]</arg1>\n";
-                        echo"\t</instruction>\n";
+                        instructionStart($counter,$word[0]);
+                        VarPrint($word[1],1);
+                        instructionEnd();
                     }
                     else
                     {
@@ -128,13 +134,13 @@ while ($line=fgets(STDIN))
                     }
                      break;
                 
-                case "MOVE":
+                case "MOVE": //<var> <symbol>
                     if((checkVar($word[1])==true)&&(checkSymbol($word[2])==true))
                     {
-                        echo"\t<instruction order=\"$counter\" opcode=\"$word[0]\">\n";
-                        echo "\t\t<arg1 type=\"var\">$word[1]</arg1>\n";
+                        instructionStart($counter,$word[0]);
+                        VarPrint($word[1],1);
                         SymbolPrint($word[2],2);
-                        echo"\t</instruction>\n";
+                        instructionEnd();
                     }
                     else
                     {             
@@ -156,9 +162,9 @@ while ($line=fgets(STDIN))
 
                         }
                         $labels[] = $word[1];
-                        echo"\t<instruction order=\"$counter\" opcode=\"$word[0]\">\n";
-                        echo "\t\t<arg1 type=\"label\">$word[1]</arg1>\n";
-                        echo"\t</instruction>\n";
+                        instructionStart($counter,$word[0]);
+                        LabelPrint($word[1],1);
+                        instructionEnd();
                     }
                     else
                     {
@@ -170,9 +176,9 @@ while ($line=fgets(STDIN))
                     if (($word[2]==NULL)&&$word[1]!=NULL)
                     {  $labelsJump[] = $word[1];
                         
-                        echo"\t<instruction order=\"$counter\" opcode=\"$word[0]\">\n";
-                        echo "\t\t<arg1 type=\"label\">$word[1]</arg1>\n";
-                        echo"\t</instruction>\n";
+                        instructionStart($counter,$word[0]);
+                        LabelPrint($word[1],1);
+                        instructionEnd();
                     }
                     break;
                  
@@ -182,12 +188,12 @@ while ($line=fgets(STDIN))
 
                     if($word[0]!=NULL&&checkSymbol($word[2])==true&&checkSymbol($word[3])==true&&$word[4]==NULL)
                     {
-                        echo"\t<instruction order=\"$counter\" opcode=\"$word[0]\">\n";
-                        echo "\t\t<arg1 type=\"label\">$word[1]</arg1>\n"; //label na ktery se skace 
+                        instructionStart($counter,$word[0]);
+                        LabelPrint($word[1],1); //label na ktery se skace 
                         $labelsJump[] = $word[1]; //pridani do pole jumpLabelu
                         SymbolPrint($word[2],2); //arg2 arg3
                         SymbolPrint($word[3],3);
-                        echo"\t</instruction>\n";
+                        instructionEnd();
 
                     }
                     else
@@ -202,9 +208,9 @@ while ($line=fgets(STDIN))
                             $exitCodeCheck=explode("@",$word[1]);
                             if($exitCodeCheck[0]=="int" && $exitCodeCheck[1]>=0 && $exitCodeCheck[1]<=49) //pouze int v rozsahu 0-49
                             {
-                                echo"\t<instruction order=\"$counter\" opcode=\"$word[0]\">\n";
+                                instructionStart($counter,$word[0]);
                                 echo "\t\t<arg1 type=\"int\">$exitCodeCheck[1]</arg1>\n";
-                                echo"\t</instruction>\n";
+                                instructionEnd();
                             }
                             else
                             {
