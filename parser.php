@@ -1,9 +1,6 @@
-
 <?php
 #Vojtěch Šíma, xsimav01, IPP FIT VUT 2021
 ini_set('display_errors','stderr'); #varovani na stan. chybový výstup
-
-
 function checkVar($var){
     if(preg_match("/^(TF|GF|LF)@[A-Za-z$?!&%*\-_][A-Za-z0-9\w$?!&%*\-_]*$/",$var)) // spec znaku + pismena + cisla (ne na zacatku)
     {
@@ -14,11 +11,11 @@ function checkVar($var){
     }
 function instructionStart($poradi,$opcode)
     {
-        echo"<instruction order=\"$poradi\" opcode=\"$opcode\">\n";
+        echo"\t<instruction order=\"$poradi\" opcode=\"$opcode\">\n";
     }
 function instructionEnd()
     {
-        echo"</instruction>\n";
+        echo"\t</instruction>\n";
     }    
    
 function checkSymbol($symbol){
@@ -46,26 +43,26 @@ function SymbolPrint($symbol,$number)
         {
             if($type[1]==NULL&&$type[0]=="string")
             {
-                echo "<arg$number type=\"$type[0]\"/>\n";
+                echo "\t\t<arg$number type=\"$type[0]\"/>\n";
             }
             else
             {
-                echo "<arg$number type=\"$type[0]\">$type[1]</arg$number>\n";
+                echo "\t\t<arg$number type=\"$type[0]\">$type[1]</arg$number>\n";
             }
            
         }
         else
         {
-            echo "<arg$number type=\"var\">$type[0]@$type[1]</arg$number>\n";
+            echo "\t\t<arg$number type=\"var\">$type[0]@$type[1]</arg$number>\n";
         }
 }
 function VarPrint($variable,$number)
 {
-    echo "<arg$number type=\"var\">$variable</arg$number>\n";
+    echo "\t\t<arg$number type=\"var\">$variable</arg$number>\n";
 }
 function LabelPrint($labeltext,$number)
 {
-    echo "<arg$number type=\"label\">$labeltext</arg1>\n";
+    echo "\t\t<arg$number type=\"label\">$labeltext</arg1>\n";
 }
 
     
