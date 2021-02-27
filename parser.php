@@ -6,8 +6,18 @@ function checkVar($var){
     {
         return true;
     }
+    echo "\033[31m chyba s $var \033[0m  \n"; //DEBUG
    return false;
    
+    }
+function checkType($type)
+    {
+        if($type=="int"||$type=="string"||$type=="bool")
+        {
+            return true;
+        }
+        echo "\033[31m chyba s $type \033[0m  \n"; //DEBUG
+        return false;
     }
 function instructionStart($poradi,$opcode)
     {
@@ -19,12 +29,13 @@ function instructionEnd()
     }    
    
 function checkSymbol($symbol){
+    //echo "symbvol co se kontrolujue $symbol".PHP_EOL;
     if(preg_match("/^(TF|GF|LF)@[A-Za-z$?!&%*\-_][A-Za-z0-9\w$?!&%*\-_]*$/",$symbol)
     ||preg_match("/^int@[+-]?[0-9]+$/",$symbol)
     ||preg_match("/^bool@(true|false)$/",$symbol)
     ||preg_match("/^nil@nil$/",$symbol)
     ||preg_match("/^string@$/",$symbol)
-    ||preg_match("/^string@(.)*$/",$symbol)
+    ||preg_match("/^string@((\\\\[0]([0-3][0125]|[9][2]))?(\S*)(\\\\[0]([0-3][0125]|[9][2]))?)*$/",$symbol)
     ) //TODO
     {
         /*$checkType=explode("@",$symbol);
@@ -32,12 +43,15 @@ function checkSymbol($symbol){
         echo $checkType[1].PHP_EOL;*/
         return true; 
     }
+    echo "\033[31m chyba ss $symbol \033[0m  \n"; //DEBUG
     return false;
 }   
 #funkce na print symbolu jako argument
 function SymbolPrint($symbol,$number)
-{
-    $type=explode("@",$symbol);
+{  
+    $type=explode("@",$symbol,2);
+    //$type[1]=str_replace("&","&amp;",$type[1]);
+    $type[1] = htmlspecialchars($type[1],ENT_QUOTES | ENT_XML1); //nahrazeni & " ' < > 
     if($type[0]=="string"||$type[0]=="int"||$type[0]=="nil"||$type[0]=="float"||$type[0]=="bool")
         {
             if($type[1]==NULL&&$type[0]=="string")
@@ -66,8 +80,7 @@ function LabelPrint($labeltext,$number)
 
     
 $counter = 0;
-$labels = [];
-$labelsJump=[];
+
 
 if ($argc==2 && $argv[1]=="--help")
     {
@@ -85,7 +98,7 @@ if ($argc==2 && $argv[1]=="--help")
         if($firstline[0]==".IPPcode21")
         {
             $BylIPPcode=true;
-            echo "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<program language=\"IPPcode21\">\n";
+            echo "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<program language=\"IPPcode21\">\n";
         }
         else if ($firstline[0]!=NULL) //komentare vynulovany
         {
@@ -116,19 +129,20 @@ while ($line=fgets(STDIN))
                     exit(21);
                     break;
 
-                case "DEFVAR": //TODO Specialni znaky? <var>
-                    if(checkVar($word[1])==true) //nesmi zacinat cislem 
-                    {
+                #<var>
+                case "POPS": 
+                case "DEFVAR":     
+                        if(checkVar($word[1])!=true||$word[2]!=NULL)
+                        {
+                            echo "\033[31m chyba DEFVAR/POPS \033[0m  \n"; //DEBUG
+                            exit(23);
+                        }
+
                         instructionStart($counter,$word[0]);
                         VarPrint($word[1],1);
                         instructionEnd();
-                    }
-                    else
-                    {
-                        echo "\033[31m chyba DEFVAR variable \033[0m  \n"; //DEBUG
-                        exit(23);
-                    }
-                     break;
+
+                    break;     
                 
                 case "MOVE": //<var> <symbol>
                     if((checkVar($word[1])==true)&&(checkSymbol($word[2])==true))
@@ -144,139 +158,85 @@ while ($line=fgets(STDIN))
                         exit(23);
                     }
                     break;
-
+                #<label>
                 case "LABEL":
-                    if (($word[2]==NULL)&&$word[1]!=NULL)
-                    {   
-                        foreach ($labels as $label)
-                        {
-                            if ($label==$word[1])
-                            {
-                                echo "\033[31m LABEL $word[1] PODRUHE \033[0m  \n"; //DEBUG
-                                exit(52);
-                            }
-
-                        }
-                        $labels[] = $word[1];
-                        instructionStart($counter,$word[0]);
-                        LabelPrint($word[1],1);
-                        instructionEnd();
-                    }
-                    else
-                    {
-                        echo "\033[31m chyba LABEL \033[0m  \n"; //DEBUG
-                        exit(23);
-                    }
-                    break;
+                case "CALL":
                 case "JUMP":
-                    if (($word[2]==NULL)&&$word[1]!=NULL)
-                    {  $labelsJump[] = $word[1];
-                        
+                
+                    if (($word[2]!=NULL)||$word[1]==NULL)
+                    {   
+                        echo "\033[31m chyba LABEL\CALL \033[0m  \n"; //DEBUG
+                        exit(23);    
+                    }
                         instructionStart($counter,$word[0]);
                         LabelPrint($word[1],1);
                         instructionEnd();
-                    }
                     break;
-                 
-                 //TODO error
-                 case "JUMPIFEQ": //<label> <symb> <symb>
-                 case "JUMPIFNEQ":
 
-                    if($word[0]!=NULL&&checkSymbol($word[2])==true&&checkSymbol($word[3])==true&&$word[4]==NULL)
-                    {
-                        instructionStart($counter,$word[0]);
-                        LabelPrint($word[1],1); //label na ktery se skace 
-                        $labelsJump[] = $word[1]; //pridani do pole jumpLabelu
-                        SymbolPrint($word[2],2); //arg2 arg3
-                        SymbolPrint($word[3],3);
-                        instructionEnd();
+                case "JUMPIFEQ": //<label> <symb> <symb>
+                case "JUMPIFNEQ":
 
-                    }
-                    else
+                    if($word[1]==NULL||checkSymbol($word[2])!=true||checkSymbol($word[3])!=true||$word[4]!=NULL)
                         {
                             echo "\033[31m chyba JUMPIFNEQ \033[0m  \n"; //DEBUG
                             exit(23);
                         }
+
+                        instructionStart($counter,$word[0]);
+                            LabelPrint($word[1],1); //label na ktery se skace 
+                            SymbolPrint($word[2],2); //arg2 arg3
+                            SymbolPrint($word[3],3);
+                            instructionEnd();
                     break;
-                    case "EXIT": // <symb>
-                        if($word[1]!=NULL&&$word[2]==NULL)
-                        {
-                            $exitCodeCheck=explode("@",$word[1]);
-                            if($exitCodeCheck[0]=="int" && $exitCodeCheck[1]>=0 && $exitCodeCheck[1]<=49) //pouze int v rozsahu 0-49
-                            {
-                                instructionStart($counter,$word[0]);
-                                echo "\t\t<arg1 type=\"int\">$exitCodeCheck[1]</arg1>\n";
-                                instructionEnd();
-                            }
-                            else
-                            {
-                                echo "\033[31m chyba EXIT \033[0m  \n"; //DEBUG
-                                exit(57);
-                            }
-                        }
-                        else
-                        {
-                            exit(23);
-                        }
-                        break;
-                    case "DPRINT": //<symb>         
+                   
+                    #<symb> 
+                case "WRITE":
+                case "DPRINT":  
+                case "EXIT":
+                case "PUSHS":          
                         if((checkSymbol($word[1])!=true)||$word[2]!=NULL)
                         {
-                            echo "\033[31m chyba DPRINT \033[0m  \n"; //DEBUG
+                            echo "\033[31m chyba DPRINT/WRITE/EXIT/PUSHS \033[0m  \n"; //DEBUG
                             exit(23);             
                         }
                         instructionStart($counter,$word[0]);
                         SymbolPrint($word[1],1);
                         instructionEnd();
-
                         break;
-
-                    case "WRITE": //<symb>
-                        if(checkSymbol($word[1])!=true||$word[2]!=NULL)
+                        
+                case "READ": //⟨var⟩ ⟨type⟩
+                        if(checkVar($word[1])!=true||checkType($word[2])!=true||$word[3]!=NULL)
                         {
-                            echo "\033[31m chyba WRITE \033[0m  \n"; //DEBUG
-                            exit(23);  
-                        }
-                        instructionStart($counter,$word[0]);
-                        SymbolPrint($word[1],1);
-                        instructionEnd();
-                        break;
-                        
-                    case "READ": //⟨var⟩ ⟨type⟩
-                        
-                        
-                        break;
-                
-
-                    case "STRLEN": //⟨var⟩ ⟨symb⟩ 
-                        if(checkVar($word[1])!=true||checkSymbol($word[2])!=true||$word[3]!=NULL)
-                        {
-                            echo "\033[31m chyba STRLEN \033[0m  \n"; //DEBUG
-                            exit(23);  
+                            echo "\033[31m chyba READ \033[0m  \n"; //DEBUG
+                            exit(23); 
                         }
                         instructionStart($counter,$word[0]);
                         VarPrint($word[1],1);
-                        SymbolPrint($word[2],2);
+                        echo "\t\t<arg2 type=\"type\">$word[2]</arg2>\n";
                         instructionEnd();
-                    break;
-                    #⟨var⟩ ⟨symb1⟩ ⟨symb2⟩
-                    case "ADD":
-                    case "SUB":
-                    case "MUL":
-                    case "IDIV":
-                    case "GT":
-                    case "LT":
-                    case "EQ":   
-                    case "AND":
-                    case "OR":
-                    case "NOT":
-                    case "STRI2INT":
-                    case "GETCHAR": 
-                    case "SETCHAR":   
-                    case "CONCAT": 
+                        
+                        break;
+
+                #⟨var⟩ ⟨symb1⟩ ⟨symb2⟩
+                case "ADD":
+                case "SUB":
+                case "MUL":
+                case "IDIV":
+                case "GT":
+                case "LT":
+                case "EQ":   
+                case "AND":
+                case "OR":
+                case "NOT":
+                case "STRI2INT":
+                case "GETCHAR": 
+                case "SETCHAR":   
+                case "CONCAT": 
                         if(checkVar($word[1])!=true||checkSymbol($word[2])!=true||checkSymbol($word[3])!=true||$word[4]!=NULL)
-                        {
-                            echo "\033[31m chyba tam kde je hodne casu \033[0m  \n"; //DEBUG
+                        {   echo checkVar($word[1]);
+                            echo checkSymbol($word[2]);
+                            echo checkSymbol($word[3]);
+                            echo "\033[31m chyba tam kde je hodne casu ($word[0]) \033[0m  \n"; //DEBUG
                             exit(23);  
                         }
                         instructionStart($counter,$word[0]);
@@ -285,12 +245,13 @@ while ($line=fgets(STDIN))
                         SymbolPrint($word[3],3);
                         instructionEnd();
                         break;
-
-                    case "TYPE": // ⟨var⟩ ⟨symb⟩
-                    case "INT2CHAR":
+                #<var><symbol>
+                case "TYPE": 
+                case "INT2CHAR":
+                case "STRLEN": 
                         if(checkVar($word[1])!=true||checkSymbol($word[2])!=true||$word[3]!=NULL)
                         {
-                            echo "\033[31m chyba TYPE/INTTOCHAR \033[0m  \n"; //DEBUG
+                            echo "\033[31m chyba TYPE/INTTOCHAR/STRLEN \033[0m  \n"; //DEBUG
                             exit(23);  
                         }
                         instructionStart($counter,$word[0]);
@@ -298,12 +259,12 @@ while ($line=fgets(STDIN))
                         SymbolPrint($word[2],2);
                         instructionEnd();
                         break;
-                    #<> 
-                    case "CREATEFRAME":
-                    case "PUSHFRAME":
-                    case "POPFRAME":
-                    case "RETURN":
-                    case "BREAK": 
+                #<> 
+                case "CREATEFRAME":
+                case "PUSHFRAME":
+                case "POPFRAME":
+                case "RETURN":
+                case "BREAK": 
                         if($word[1]!=NULL)
                         {
                             echo "\033[31m chyba tam kde je hodně casu \033[0m  \n"; //DEBUG
@@ -313,73 +274,18 @@ while ($line=fgets(STDIN))
                         instructionEnd();
                     break;
 
-                    case "PUSHS":  //   ⟨symb⟩
-                        if(checkSymbol($word[1])!=true||$word[2]!=NULL)
-                        {
-                            echo "\033[31m chyba PUSHS \033[0m  \n"; //DEBUG
-                            exit(23);
-                        }
-
-                        instructionStart($counter,$word[0]);
-                        SymbolPrint($word[1],1);
-                        instructionEnd();
-
-                    break;
-
-                    case "POPS":  //   ⟨var⟩
-                        if(checkVar($word[1])!=true||$word[2]!=NULL)
-                        {
-                            echo "\033[31m chyba POPS \033[0m  \n"; //DEBUG
-                            exit(23);
-                        }
-
-                        instructionStart($counter,$word[0]);
-                        VarPrint($word[1],1);
-                        instructionEnd();
-
-                    break;
-                
-
-    
+               
                 default:   
                     echo "\033[31m DEFAULT - neznamy operacni kod \033[0m  \n"; //DEBUG
                     exit(22);
-                
-                   
-    
-     
-    
-                       
+                             
             }  //konec switche
 
-
-    
         } //konec ifu pokud neni prazdny radek => bude instrukce
        
           
     } //konec main whilu
     
-    #kontrola zda jumpy odkazuji na definovana navesti
-    foreach ($labelsJump as $labelJump)
-        {         
-            $nalezenJump=false;
-            foreach ($labels as $label)
-            {  
-                if($label==$labelJump)
-                {
-                    $nalezenJump=true;
-                }
-            }
-
-            if( $nalezenJump==false)
-            {
-                echo "\033[31m jump na neexistujici label \033[0m  \n"; //DEBUG
-                exit(51);
-            }
-        } //foreach konec 
-
-
-
        
         echo "</program>";
         //echo  "\033[32mOK\033[0m \n"; //DEBUG
