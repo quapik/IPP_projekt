@@ -30,7 +30,6 @@ function checkSymbol($symbol){
         /*$checkType=explode("@",$symbol);
         echo $checkType[0].PHP_EOL;
         echo $checkType[1].PHP_EOL;*/
-
         return true; 
     }
     return false;
@@ -232,9 +231,6 @@ while ($line=fgets(STDIN))
 
                         break;
 
-                    case "BREAK":  //<>
-                        
-                        break;
                     case "WRITE": //<symb>
                         if(checkSymbol($word[1])!=true||$word[2]!=NULL)
                         {
@@ -250,19 +246,7 @@ while ($line=fgets(STDIN))
                         
                         
                         break;
-
-                    case "CONCAT": //⟨var⟩ ⟨symb1⟩ ⟨symb2⟩
-                        if(checkVar($word[1])!=true||checkSymbol($word[2])!=true||checkSymbol($word[3])!=true||$word[4]!=NULL)
-                        {
-                            echo "\033[31m chyba CONCAT \033[0m  \n"; //DEBUG
-                            exit(23);  
-                        }
-                        instructionStart($counter,$word[0]);
-                        echo "\t\t<arg1 type=\"var\">$word[1]</arg1>\n";
-                        SymbolPrint($word[2],2);
-                        SymbolPrint($word[3],3);
-                        instructionEnd();
-                        break;
+                
 
                     case "STRLEN": //⟨var⟩ ⟨symb⟩ 
                         if(checkVar($word[1])!=true||checkSymbol($word[2])!=true||$word[3]!=NULL)
@@ -275,12 +259,24 @@ while ($line=fgets(STDIN))
                         SymbolPrint($word[2],2);
                         instructionEnd();
                     break;
-
-                    case "GETCHAR": //⟨var⟩ ⟨symb1⟩ ⟨symb2⟩
-                    case "SETCHAR":    
+                    #⟨var⟩ ⟨symb1⟩ ⟨symb2⟩
+                    case "ADD":
+                    case "SUB":
+                    case "MUL":
+                    case "IDIV":
+                    case "GT":
+                    case "LT":
+                    case "EQ":   
+                    case "AND":
+                    case "OR":
+                    case "NOT":
+                    case "STRI2INT":
+                    case "GETCHAR": 
+                    case "SETCHAR":   
+                    case "CONCAT": 
                         if(checkVar($word[1])!=true||checkSymbol($word[2])!=true||checkSymbol($word[3])!=true||$word[4]!=NULL)
                         {
-                            echo "\033[31m chyba GETCHAR \033[0m  \n"; //DEBUG
+                            echo "\033[31m chyba tam kde je hodne casu \033[0m  \n"; //DEBUG
                             exit(23);  
                         }
                         instructionStart($counter,$word[0]);
@@ -288,9 +284,61 @@ while ($line=fgets(STDIN))
                         SymbolPrint($word[2],2);
                         SymbolPrint($word[3],3);
                         instructionEnd();
-                        //TODO chceck STRLEN podle zadani!!!!!!
-                        
                         break;
+
+                    case "TYPE": // ⟨var⟩ ⟨symb⟩
+                    case "INT2CHAR":
+                        if(checkVar($word[1])!=true||checkSymbol($word[2])!=true||$word[3]!=NULL)
+                        {
+                            echo "\033[31m chyba TYPE/INTTOCHAR \033[0m  \n"; //DEBUG
+                            exit(23);  
+                        }
+                        instructionStart($counter,$word[0]);
+                        VarPrint($word[1],1);
+                        SymbolPrint($word[2],2);
+                        instructionEnd();
+                        break;
+                    #<> 
+                    case "CREATEFRAME":
+                    case "PUSHFRAME":
+                    case "POPFRAME":
+                    case "RETURN":
+                    case "BREAK": 
+                        if($word[1]!=NULL)
+                        {
+                            echo "\033[31m chyba tam kde je hodně casu \033[0m  \n"; //DEBUG
+                            exit(23);
+                        }
+                        instructionStart($counter,$word[0]);
+                        instructionEnd();
+                    break;
+
+                    case "PUSHS":  //   ⟨symb⟩
+                        if(checkSymbol($word[1])!=true||$word[2]!=NULL)
+                        {
+                            echo "\033[31m chyba PUSHS \033[0m  \n"; //DEBUG
+                            exit(23);
+                        }
+
+                        instructionStart($counter,$word[0]);
+                        SymbolPrint($word[1],1);
+                        instructionEnd();
+
+                    break;
+
+                    case "POPS":  //   ⟨var⟩
+                        if(checkVar($word[1])!=true||$word[2]!=NULL)
+                        {
+                            echo "\033[31m chyba POPS \033[0m  \n"; //DEBUG
+                            exit(23);
+                        }
+
+                        instructionStart($counter,$word[0]);
+                        VarPrint($word[1],1);
+                        instructionEnd();
+
+                    break;
+                
 
     
                 default:   
