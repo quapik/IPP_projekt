@@ -1,6 +1,6 @@
 <?php
 #Vojtěch Šíma, xsimav01, IPP FIT VUT 2021
-ini_set('display_errors','stderr'); #varovani na stan. chybový výstup
+ini_set('display_errors','stderr'); #varovani na stan. chybový výstup¨
 function checkVar($var){
     if(preg_match("/^(TF|GF|LF)@[A-Za-z$?!&%*\-_][A-Za-z0-9\w$?!&%*\-_]*$/",$var)) // spec znaku + pismena + cisla (ne na zacatku)
     {
@@ -36,7 +36,7 @@ function checkSymbol($symbol){
     ||preg_match("/^nil@nil$/",$symbol)
     ||preg_match("/^string@$/",$symbol)
     ||preg_match("/^string@((\\\\[0]([0-3][0125]|[9][2]))?(\S*)(\\\\[0]([0-3][0125]|[9][2]))?)*$/",$symbol)
-    ) //TODO
+    ) 
     {
         /*$checkType=explode("@",$symbol);
         echo $checkType[0].PHP_EOL;
@@ -87,22 +87,25 @@ if ($argc==2 && $argv[1]=="--help")
     echo "Zde bude napoveda";
     exit(0);
     }
-
+$pom=0;
     $BylIPPcode=false;
     while (($BylIPPcode==false&&$firstline=fgets(STDIN))) //while prochazejici dokuď jsou komentare nebo prazdne radky pred .IPPcode21 (pokud instrukce, chyba)
-    {
-        $firstline=str_replace(PHP_EOL,"",$firstline); //odstraneni EOLu
-        $firstline = explode("#",$firstline); //smazani komentaru
-        
-        
-        if($firstline[0]==".IPPcode21")
+    {   //echo $firstline;
+        $firstline2=explode(PHP_EOL,$firstline); //odstraneni EOLu
+        $test = preg_split('/[#]+/',$firstline2[0]);
+       //smazani komentaru
+        //echo  "jedno $test[0]".PHP_EOL;
+        echo $test[0].PHP_EOL;
+        //echo $test[1].PHP_EOL;
+        echo "wwtf".PHP_EOL;
+        if(strcmp($test[0],".IPPcode21")==0)
         {
             $BylIPPcode=true;
             echo "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<program language=\"IPPcode21\">\n";
         }
-        else if ($firstline[0]!=NULL) //komentare vynulovany
+        else if ($test[0]!=NULL) //komentare vynulovany
         {
-            echo "\033[31m instrukce pred IPPcode \033[0m  \n"; //DEBUG
+            echo "instrukce pred IPPcode  ".PHP_EOL; //DEBUG
             exit(21); //todo oopravdu 21?
         }
 
@@ -113,9 +116,17 @@ while ($line=fgets(STDIN))
     {
         $line=str_replace(PHP_EOL,"",$line); //odstraneni EOLu
         $line = explode("#",$line); //smazani komentaru
-        $word=explode(" ",$line[0]); //odmazani bilych znaku
+        $word = preg_split('/[\s]+/',$line[0]); //odmazani bilych znaku
+        //$word = preg_split("~[\s]+~",$line[0]); //odmazani bilych znaku
+        if($word[0]==NULL)
+        {
+        $word[0]=$word[1];
+        $word[1]=$word[2];
+        $word[2]=$word[3];
+        $word[3]=$word[4];
+        $word[4]=$word[5];
 
-
+        }
         $word[0]=strtoupper($word[0]); //neni case sensitive
         if($word[0]!=NULL)  //pokud neni prazdny radek => bude instrukce
         {
@@ -276,7 +287,7 @@ while ($line=fgets(STDIN))
 
                
                 default:   
-                    echo "\033[31m DEFAULT - neznamy operacni kod \033[0m  \n"; //DEBUG
+                    echo "\033[31m DEFAULT - neznamy operacni kod $word[0] \033[0m  \n"; //DEBUG
                     exit(22);
                              
             }  //konec switche
