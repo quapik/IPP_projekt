@@ -90,20 +90,22 @@ if ($argc==2 && $argv[1]=="--help")
 $pom=0;
     $BylIPPcode=false;
     while (($BylIPPcode==false&&$firstline=fgets(STDIN))) //while prochazejici dokuď jsou komentare nebo prazdne radky pred .IPPcode21 (pokud instrukce, chyba)
-    {   //echo $firstline;
-        $firstline2=explode(PHP_EOL,$firstline); //odstraneni EOLu
-        $test = preg_split('/[#]+/',$firstline2[0]);
-       //smazani komentaru
-        //echo  "jedno $test[0]".PHP_EOL;
-        echo $test[0].PHP_EOL;
-        //echo $test[1].PHP_EOL;
-        echo "wwtf".PHP_EOL;
-        if(strcmp($test[0],".IPPcode21")==0)
+    {   
+        $firstline=trim($firstline); //odstraneni EOLu a mezer pred a po
+    
+        $pom=strpos($firstline , "#"); //hledani # (pokud je, vrati jeho pozici)
+        if($pom!=NULL)
+        {
+            $firstline = substr($firstline, 0, $pom); //uzitecny string je od zacatku po #
+        }
+        
+        $firstline=strtolower($firstline);
+        if(strcmp($firstline,".ippcode21")==0)
         {
             $BylIPPcode=true;
             echo "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<program language=\"IPPcode21\">\n";
         }
-        else if ($test[0]!=NULL) //komentare vynulovany
+        else if (!($firstline==NULL||$firstline[0]=="#")) //pokud to neni  null(empty line) nebo to neni # tak chyba
         {
             echo "instrukce pred IPPcode  ".PHP_EOL; //DEBUG
             exit(21); //todo oopravdu 21?
@@ -114,20 +116,19 @@ $pom=0;
 
 while ($line=fgets(STDIN))
     {
-        $line=str_replace(PHP_EOL,"",$line); //odstraneni EOLu
-        $line = explode("#",$line); //smazani komentaru
-        $word = preg_split('/[\s]+/',$line[0]); //odmazani bilych znaku
-        //$word = preg_split("~[\s]+~",$line[0]); //odmazani bilych znaku
-        if($word[0]==NULL)
+        $line=trim($line); //odstraneni EOLu a mezer pred a po
+        $pom=strpos($line , "#");
+        if($pom!=NULL)
         {
-        $word[0]=$word[1];
-        $word[1]=$word[2];
-        $word[2]=$word[3];
-        $word[3]=$word[4];
-        $word[4]=$word[5];
-
+            $line = substr($line, 0, $pom);
         }
+        //$line = explode("#",$line); //smazani komentaru
+        $word = preg_split('/[\s]+/',$line); //odmazani bilych znaku
         $word[0]=strtoupper($word[0]); //neni case sensitive
+        if($word[0][0]=="#")
+        {
+            $word[0]=NULL;
+        }
         if($word[0]!=NULL)  //pokud neni prazdny radek => bude instrukce
         {
             //echo $word[0]."\n"; //DEBUG
