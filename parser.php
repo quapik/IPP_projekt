@@ -1,35 +1,40 @@
 <?php
 #Vojtěch Šíma, xsimav01, IPP FIT VUT 2021
-ini_set('display_errors','stderr'); #varovani na stan. chybový výstup¨
+ini_set('display_errors','stderr'); #varovani na stan. chybový výstup
+$counter = 0; #counter instrukci
+
+#funkce na kontorlu validnosti <var>
 function checkVar($var){
     if(preg_match("/^(TF|GF|LF)@[A-Za-z$?!&%*\-_][A-Za-z0-9\w$?!&%*\-_]*$/",$var)) // spec znaku + pismena + cisla (ne na zacatku)
     {
         return true;
     }
-    echo "\033[31m chyba s $var \033[0m  \n"; //DEBUG
+    #echo "\033[31m chyba s $var \033[0m  \n"; //DEBUG
    return false;
    
     }
+#funkce na kontorlu validnosti <type>
 function checkType($type)
     {
         if($type=="int"||$type=="string"||$type=="bool")
         {
             return true;
         }
-        echo "\033[31m chyba s $type \033[0m  \n"; //DEBUG
+        #echo "\033[31m chyba s $type \033[0m  \n"; //DEBUG
         return false;
     }
+#start instrukce
 function instructionStart($poradi,$opcode)
     {
         echo"\t<instruction order=\"$poradi\" opcode=\"$opcode\">\n";
     }
+#konec instrukce
 function instructionEnd()
     {
         echo"\t</instruction>\n";
     }    
-   
+#funkce na kontorlu validnosti <symbol>
 function checkSymbol($symbol){
-    //echo "symbvol co se kontrolujue $symbol".PHP_EOL;
     if(preg_match("/^(TF|GF|LF)@[A-Za-z$?!&%*\-_][A-Za-z0-9\w$?!&%*\-_]*$/",$symbol)
     ||preg_match("/^int@[+-]?[0-9]+$/",$symbol)
     ||preg_match("/^bool@(true|false)$/",$symbol)
@@ -38,12 +43,9 @@ function checkSymbol($symbol){
     ||preg_match("/^string@((\\\\[0]([0-3][0125]|[9][2]))?(\S*)(\\\\[0]([0-3][0125]|[9][2]))?)*$/",$symbol)
     ) 
     {
-        /*$checkType=explode("@",$symbol);
-        echo $checkType[0].PHP_EOL;
-        echo $checkType[1].PHP_EOL;*/
         return true; 
     }
-    echo "\033[31m chyba ss $symbol \033[0m  \n"; //DEBUG
+    #echo "\033[31m chyba ss $symbol \033[0m  \n"; //DEBUG
     return false;
 }   
 #funkce na print symbolu jako argument
@@ -69,51 +71,76 @@ function SymbolPrint($symbol,$number)
             echo "\t\t<arg$number type=\"var\">$type[0]@$type[1]</arg$number>\n";
         }
 }
+#funkce na print var jako argument
 function VarPrint($variable,$number)
 {
     echo "\t\t<arg$number type=\"var\">$variable</arg$number>\n";
 }
+#funkce na print labelu
 function LabelPrint($labeltext,$number)
 {
     echo "\t\t<arg$number type=\"label\">$labeltext</arg1>\n";
 }
+if($argc>2) #Máme moc parametrů
+{
+    exit(10);
+}
 
-    
-$counter = 0;
 
-
-if ($argc==2 && $argv[1]=="--help")
+if ($argc==2)
     {
-    echo "Zde bude napoveda";
-    exit(0);
+        if($argv[1]=="--help") #Nápověda
+        {
+            echo "Nápověda pro  Analyzátor kódu v IPPcode21 (parse.php)
+    -----------------------------------------------------------
+    Jediný možný způsob spuštění je parser.php a STDIN vstup
+    Vzor spuštění na Merlinovy: php7.4 parser.php <vstupnisoubor
+    Jiná kombinace parametrů vede k chybě
+    Autor: Vojtěch Šíma, xsimav01, 2021, FIT VUT";
+        exit(0);
+        }
+        else
+        {
+            exit(10); #2 parametry a druhý není --help
+        }
+        
     }
+    
+
 $pom=0;
-    $BylIPPcode=false;
+$BylIPPcode=false;
+$checkSTDIN=false;
     while (($BylIPPcode==false&&$firstline=fgets(STDIN))) //while prochazejici dokuď jsou komentare nebo prazdne radky pred .IPPcode21 (pokud instrukce, chyba)
     {   
+        $checkSTDIN=true;
         $firstline=trim($firstline); //odstraneni EOLu a mezer pred a po
     
         $pom=strpos($firstline , "#"); //hledani # (pokud je, vrati jeho pozici)
         if($pom!=NULL)
         {
             $firstline = substr($firstline, 0, $pom); //uzitecny string je od zacatku po #
+           
         }
         
         $firstline=strtolower($firstline);
-        if(strcmp($firstline,".ippcode21")==0)
+        if(strcmp($firstline,".ippcode21")==0) #hlavička
         {
             $BylIPPcode=true;
             echo "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<program language=\"IPPcode21\">\n";
         }
         else if (!($firstline==NULL||$firstline[0]=="#")) //pokud to neni  null(empty line) nebo to neni # tak chyba
         {
-            echo "instrukce pred IPPcode  ".PHP_EOL; //DEBUG
+            #echo "instrukce pred IPPcode  ".PHP_EOL; //DEBUG
             exit(21); //todo oopravdu 21?
         }
 
     }
+    if($checkSTDIN==false)
+    {
+        exit(21); #nebyl stdin
+    }
     
-
+#while který se opakuje po nalezená hlavičky do konce
 while ($line=fgets(STDIN))
     {
         $line=trim($line); //odstraneni EOLu a mezer pred a po
@@ -137,7 +164,7 @@ while ($line=fgets(STDIN))
             switch ($word[0]){
 
                 case ".IPPCODE21":
-                    echo "\033[31m hlavicka podruhe \033[0m  \n"; //DEBUG
+                    #echo "\033[31m hlavicka podruhe \033[0m  \n"; //DEBUG
                     exit(21);
                     break;
 
@@ -146,7 +173,7 @@ while ($line=fgets(STDIN))
                 case "DEFVAR":     
                         if(checkVar($word[1])!=true||$word[2]!=NULL)
                         {
-                            echo "\033[31m chyba DEFVAR/POPS \033[0m  \n"; //DEBUG
+                            #echo "\033[31m chyba DEFVAR/POPS \033[0m  \n"; //DEBUG
                             exit(23);
                         }
 
@@ -184,13 +211,13 @@ while ($line=fgets(STDIN))
                         LabelPrint($word[1],1);
                         instructionEnd();
                     break;
-
-                case "JUMPIFEQ": //<label> <symb> <symb>
+                #<label> <symb> <symb>
+                case "JUMPIFEQ": 
                 case "JUMPIFNEQ":
 
                     if($word[1]==NULL||checkSymbol($word[2])!=true||checkSymbol($word[3])!=true||$word[4]!=NULL)
                         {
-                            echo "\033[31m chyba JUMPIFNEQ \033[0m  \n"; //DEBUG
+                            #echo "\033[31m chyba JUMPIFNEQ \033[0m  \n"; //DEBUG
                             exit(23);
                         }
 
@@ -208,18 +235,18 @@ while ($line=fgets(STDIN))
                 case "PUSHS":          
                         if((checkSymbol($word[1])!=true)||$word[2]!=NULL)
                         {
-                            echo "\033[31m chyba DPRINT/WRITE/EXIT/PUSHS \033[0m  \n"; //DEBUG
+                            #echo "\033[31m chyba DPRINT/WRITE/EXIT/PUSHS \033[0m  \n"; //DEBUG
                             exit(23);             
                         }
                         instructionStart($counter,$word[0]);
                         SymbolPrint($word[1],1);
                         instructionEnd();
                         break;
-                        
-                case "READ": //⟨var⟩ ⟨type⟩
+                #⟨var⟩ ⟨type⟩  
+                case "READ":
                         if(checkVar($word[1])!=true||checkType($word[2])!=true||$word[3]!=NULL)
                         {
-                            echo "\033[31m chyba READ \033[0m  \n"; //DEBUG
+                            #echo "\033[31m chyba READ \033[0m  \n"; //DEBUG
                             exit(23); 
                         }
                         instructionStart($counter,$word[0]);
@@ -245,10 +272,8 @@ while ($line=fgets(STDIN))
                 case "SETCHAR":   
                 case "CONCAT": 
                         if(checkVar($word[1])!=true||checkSymbol($word[2])!=true||checkSymbol($word[3])!=true||$word[4]!=NULL)
-                        {   echo checkVar($word[1]);
-                            echo checkSymbol($word[2]);
-                            echo checkSymbol($word[3]);
-                            echo "\033[31m chyba tam kde je hodne casu ($word[0]) \033[0m  \n"; //DEBUG
+                        {   
+                            #echo "\033[31m chyba tam kde je hodne casu ($word[0]) \033[0m  \n"; //DEBUG
                             exit(23);  
                         }
                         instructionStart($counter,$word[0]);
@@ -263,7 +288,7 @@ while ($line=fgets(STDIN))
                 case "STRLEN": 
                         if(checkVar($word[1])!=true||checkSymbol($word[2])!=true||$word[3]!=NULL)
                         {
-                            echo "\033[31m chyba TYPE/INTTOCHAR/STRLEN \033[0m  \n"; //DEBUG
+                            #echo "\033[31m chyba TYPE/INTTOCHAR/STRLEN \033[0m  \n"; //DEBUG
                             exit(23);  
                         }
                         instructionStart($counter,$word[0]);
@@ -279,16 +304,16 @@ while ($line=fgets(STDIN))
                 case "BREAK": 
                         if($word[1]!=NULL)
                         {
-                            echo "\033[31m chyba tam kde je hodně casu \033[0m  \n"; //DEBUG
+                            #echo "\033[31m chyba tam kde je hodně casu \033[0m  \n"; //DEBUG
                             exit(23);
                         }
                         instructionStart($counter,$word[0]);
                         instructionEnd();
                     break;
 
-               
+                #pokud nenastane žadna očekavana instrukce
                 default:   
-                    echo "\033[31m DEFAULT - neznamy operacni kod $word[0] \033[0m  \n"; //DEBUG
+                    #echo "\033[31m DEFAULT - neznamy operacni kod $word[0] \033[0m  \n"; //DEBUG
                     exit(22);
                              
             }  //konec switche
