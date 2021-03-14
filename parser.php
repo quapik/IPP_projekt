@@ -110,8 +110,8 @@ if ($argc==2)
 $pom=0;
 $BylIPPcode=false;
 $checkSTDIN=false;
-    while (($BylIPPcode==false&&$firstline=fgets(STDIN))) //while prochazejici dokuď jsou komentare nebo prazdne radky pred .IPPcode21 (pokud instrukce, chyba)
-    {   
+    while ($BylIPPcode==false&&$firstline=fgets(STDIN)) //while prochazejici dokuď jsou komentare nebo prazdne radky pred .IPPcode21 (pokud instrukce, chyba)
+    {  
         $checkSTDIN=true;
         $firstline=trim($firstline); //odstraneni EOLu a mezer pred a po
     
@@ -130,14 +130,18 @@ $checkSTDIN=false;
         }
         else if (!($firstline==NULL||$firstline[0]=="#")) //pokud to neni  null(empty line) nebo to neni # tak chyba
         {
-            #echo "instrukce pred IPPcode  ".PHP_EOL; //DEBUG
+            echo "instrukce pred IPPcode  ".PHP_EOL; //DEBUG
             exit(21); //todo oopravdu 21?
         }
 
-    }
-    if($checkSTDIN==false)
+    } 
+    if($checkSTDIN!=true)
     {
-        exit(21); #nebyl stdin
+        exit(0); #nebyl stdin
+    }
+    if($BylIPPcode==False)
+    {
+        exit(21); #nebyla hlavicka
     }
     
 #while který se opakuje po nalezená hlavičky do konce
