@@ -1,6 +1,36 @@
 #Vojtěch Šíma, xsimav01, IPP FIT VUT 2021
 import sys
 import xml.etree.ElementTree as ET
+import re
+variables=[]
+LFStack=[]
+BylCreatframe=False
+TF=None
+def CheckTypes(argtype,data):
+    if argtype=="int":
+        if not (re.search('^[-+]?[0-9]+$',data)):
+            print("Chyba - type int, ale text not int")#DEBUG
+            exit(32)
+    elif argtype=="string":
+        if not(re.search(r'\S+',data)): #TODO!
+            exit(32)
+    elif argtype=="bool":
+        if not (re.search('(true|false)$',data)):
+            print("Chyba - type bool") #DEBUG
+            exit(32)
+    elif argtype=="var":
+        if not (re.search(r'((TF|GF|LF)@[A-Za-z$?!&%*\-_]+[A-Za-z0-9\w$?!&%*\-_]*)',data)): #chech tento regex
+            print("Chyba - type var") #DEBUG
+            exit(32)
+
+
+    else:
+        print("Špatný argtyp")
+        exit(32)
+    #TODO VAR,LABEL,NIL? 
+        
+
+
 BylSource=False
 BylInput=False
 
@@ -75,9 +105,55 @@ if (language !='IPPcode21'):
     exit(32)
 
 for child in root:
-    print("atribut", child.attrib,"tag",child.tag) 
-    print(child.attrib['opcode'])
-    for arg in child:
-        print(arg.attrib)
+    #print("atribut", child.attrib,"tag",child.tag) 
+    opcode=(child.attrib['opcode'])
+    
+    if (opcode=="WRITE"):
+        for arg in child:
+            argtype=arg.attrib['type']
+            CheckTypes(argtype,arg.text)
+            print(arg.text) #Samotný výpis WRITU == NEMAZAT!
+    elif (opcode=="DEFVAR"):
+        for arg in child:
+            argtype=arg.attrib['type']
+            CheckTypes(argtype,arg.text)
+        try:
+            variables.index(arg.text)
+        except ValueError:  #hodnota nebyla definovana => error a pridame
+            variables.append(arg.text)
+        else:
+            print("Definice proměnne podruhé!")#DEBUG
+            exit(52)
+    elif (opcode=="MOVE"):
+        if arg not in child:
+            argtype=arg.attrib['type']
+            print(argtype)
+        if arg not in child:
+            argtype=arg.attrib['type']
+            print(argtype)
+        
+    elif (opcode=="CREATEFRAME"):
+        BylCreatframe=True
+        TF=None
+    elif (opcode=="PUSHFRAME"):
+        if BylCreatframe == False:
+            print("Pokus o přístup k nedefinovanému rámci") #DEBUG
+            exit(55)
+        LF=TF
+        LFStack.append(TF)
+        BylCreatframe=False
+    elif (opcode=="POPFRAME"):
+        try:
+            TF=LFStack.pop()
+        except IndexError:
+            print("Chyba POPFRAME-prazdny zasobnik")
+            exit(55)
+        BylCreatframe=True #TODO toto udelat spravně
+    
+
+
+
+
+
 print("OK")
 exit(0)
