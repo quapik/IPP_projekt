@@ -2,34 +2,6 @@
 import sys
 import xml.etree.ElementTree as ET
 import re
-variables=[]
-LFStack=[]
-BylCreatframe=False
-TF=None
-def CheckTypes(argtype,data):
-    if argtype=="int":
-        if not (re.search('^[-+]?[0-9]+$',data)):
-            print("Chyba - type int, ale text not int")#DEBUG
-            exit(32)
-    elif argtype=="string":
-        if not(re.search(r'\S+',data)): #TODO!
-            exit(32)
-    elif argtype=="bool":
-        if not (re.search('(true|false)$',data)):
-            print("Chyba - type bool") #DEBUG
-            exit(32)
-    elif argtype=="var":
-        if not (re.search(r'((TF|GF|LF)@[A-Za-z$?!&%*\-_]+[A-Za-z0-9\w$?!&%*\-_]*)',data)): #chech tento regex
-            print("Chyba - type var") #DEBUG
-            exit(32)
-
-
-    else:
-        print("Špatný argtyp")
-        exit(32)
-    #TODO VAR,LABEL,NIL? 
-        
-
 
 BylSource=False
 BylInput=False
@@ -54,12 +26,10 @@ else:
     if(sys.argv[1][0:9]=="--source="):
         sourcefile=sys.argv[1][9:len(sys.argv[1])]
         BylSource=True
-        print(sourcefile)
 
     elif(sys.argv[1][0:8]=="--input="):
         inputfile=sys.argv[1][8:len(sys.argv[1])]
         BylInput=True
-        print(inputfile)
     else:
         print("errror - spatny argument")
         exit(10) #TODO
@@ -69,14 +39,12 @@ else:
             exit(10) 
         sourcefile=sys.argv[2][9:len(sys.argv[2])]
         BylSource=True
-        print(sourcefile)
 
     elif(sys.argv[2][0:8]=="--input="):
         if(BylInput is True):
             exit(10) #chech exit
         inputfile=sys.argv[2][8:len(sys.argv[2])]
         BylInput=True
-        print(inputfile)
     else:
         print("errror - spatny argument") #DEBUG
         exit(10) #TODO
@@ -85,6 +53,55 @@ else:
         print("nebyl zadan ani input ani source") #DEBUG
         exit(10)
 #------------------------------------------------------------------------------------------------------------------------------
+variables=[]
+variablesValues=[]
+LFStack=[]
+SymbolTypeList=["int","var","nil","string","bool"]
+BylCreatframe=False
+TF=None
+def CheckTypes(argtype,data):
+    if argtype=="int":
+        if not (re.search('^[-+]?[0-9]+$',data)):
+            print("Chyba - type int, ale text not int")#DEBUG
+            exit(32)
+    elif argtype=="string":
+        if not(re.search(r'\S+',data)): #TODO!
+            exit(32)
+    elif argtype=="bool":
+        if not (re.search('(true|false)$',data)):
+            print("Chyba - type bool") #DEBUG
+            exit(32)
+    elif argtype=="var":
+        if not (re.search(r'((TF|GF|LF)@[A-Za-z$?!&%*\-_]+[A-Za-z0-9\w$?!&%*\-_]*)',data)): #chech tento regex
+            print("Chyba - type var") #DEBUG
+            exit(32)
+
+
+    else:
+        print("Špatný argtyp")
+        exit(32)
+    #TODO VAR,LABEL,NIL? 
+def CheckSymbolType(symboltype):
+    if symboltype not in SymbolTypeList:
+        print("Chyba arg type=symbol") #DEBUG
+        exit(32)
+#funkce který zkontroluje počet argumentů instrukce
+def CheckPocetArgumentuInstukce(child,pocet):
+    for i in range(pocet):
+        try:
+            child[i].attrib['type']
+        except:
+                print("Error s počtem argumentů- CheckPocetArgumentuInstukce") #DEBUG
+                exit(32)
+        CheckTypes(child[i].attrib['type'],child[i].text)
+    try:
+        child[pocet].attrib['type']
+    except:
+        pass
+    else:
+        print("Error s počtem argumentů- CheckPocetArgumentuInstukce") #DEBUG
+        exit(32)
+#-----------------------------------------------------------------------------------------------------
 try:
     if(BylSource==True):  #pokud je source file jako parametr, jinak stdin
         tree = ET.parse(sourcefile)
@@ -109,10 +126,17 @@ for child in root:
     opcode=(child.attrib['opcode'])
     
     if (opcode=="WRITE"):
-        for arg in child:
-            argtype=arg.attrib['type']
-            CheckTypes(argtype,arg.text)
-            print(arg.text) #Samotný výpis WRITU == NEMAZAT!
+        CheckPocetArgumentuInstukce(child,1)
+        if child[0].attrib['type'] == "var":
+            try:
+                variables.index(child[0].text)
+            except ValueError:  #hodnota nebyla definovana => error a pridame
+                print("WRITE nedefinovana proměnna")
+                exit(52)
+            else:
+                print(variablesValues[index][1])#DEBUG
+        else:
+            print(child[0].text) #Samotný výpis WRITU == NEMAZAT!
     elif (opcode=="DEFVAR"):
         for arg in child:
             argtype=arg.attrib['type']
@@ -121,17 +145,27 @@ for child in root:
             variables.index(arg.text)
         except ValueError:  #hodnota nebyla definovana => error a pridame
             variables.append(arg.text)
+            variablesValues.append(["-","-"])
         else:
             print("Definice proměnne podruhé!")#DEBUG
             exit(52)
     elif (opcode=="MOVE"):
-        if arg not in child:
-            argtype=arg.attrib['type']
-            print(argtype)
-        if arg not in child:
-            argtype=arg.attrib['type']
-            print(argtype)
-        
+        CheckPocetArgumentuInstukce(child,2)
+        if child[0].attrib['type']!="var":
+            print("MOVE arg1 neni VAR") #DEBUG
+            exit(52)
+        try:
+            index=variables.index(child[0].text)
+        except ValueError:  #hodnota nebyla definovana => error a pridame
+            print("promenna",child[0].text,"nebyla definovana" ) #DEBUG
+            exit(55)
+        else:
+            print("s",variablesValues[index][0])
+            print("s",variablesValues[index][1])
+            if variablesValues[index][0] == "-":
+                variablesValues[index][0] = child[1].attrib['type']
+                variablesValues[index][1] = child[1].text
+ 
     elif (opcode=="CREATEFRAME"):
         BylCreatframe=True
         TF=None
@@ -149,6 +183,40 @@ for child in root:
             print("Chyba POPFRAME-prazdny zasobnik")
             exit(55)
         BylCreatframe=True #TODO toto udelat spravně
+    elif (opcode=="ADD" or opcode=="SUB" or opcode=="MUL" or opcode=="IDIV"):
+        CheckPocetArgumentuInstukce(child,3)
+        if child[0].attrib['type'] == "var" and child[1].attrib['type'] == "int" and child[2].attrib['type'] == "int":
+            try:
+                index=variables.index(child[0].text)
+            except ValueError:  #hodnota nebyla definovana => error a pridame
+                print("promenna",child[0].text,"nebyla definovana" ) #DEBUG
+                exit(55)
+            else:
+                if variablesValues[index][0] != "int":
+                    if variablesValues[index][0] == "-":
+                        variablesValues[index][0] = "int"
+                    else:
+                        print("Spatny typ variable v ADD")
+                        exit(53)
+                if opcode=="ADD": #todo for variables
+                    variablesValues[index][1] = int(child[1].text) + int(child[2].text)
+                elif opcode=="SUB":
+                    variablesValues[index][1] = int(child[1].text) - int(child[2].text)
+                elif opcode=="MUL":
+                    variablesValues[index][1] = int(child[1].text) * int(child[2].text)
+                else: #IDIV
+                    if int(child[2].text) == 0:
+                        print("Dělění nulou")
+                        exit(57)
+                    variablesValues[index][1] = int(child[1].text) // int(child[2].text) #zapsani vysledku do proměnne                 
+        else:
+            print("Špatne typy opernadu ADD")
+            exit(53)
+    elif (opcode=="LT" or opcode=="GT" or opcode=="EQ"):
+        CheckPocetArgumentuInstukce(child,3)
+        
+
+
     
 
 
