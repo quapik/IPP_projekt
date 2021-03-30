@@ -56,6 +56,9 @@ else:
 variables=[]
 variablesValues=[]
 LFStack=[]
+all=[]
+labels=[]
+numbers=[]
 SymbolTypeList=["int","var","nil","string","bool"]
 BylCreatframe=False
 TF=None
@@ -75,7 +78,8 @@ def CheckTypes(argtype,data):
         if not (re.search(r'((TF|GF|LF)@[A-Za-z$?!&%*\-_]+[A-Za-z0-9\w$?!&%*\-_]*)',data)): #chech tento regex
             print("Chyba - type var") #DEBUG
             exit(32)
-
+    elif argtype=="label":
+        pass
 
     else:
         print("Špatný argtyp")
@@ -121,107 +125,134 @@ if (language !='IPPcode21'):
     print("Chybna hlavička\n") #DEBUG
     exit(32)
 
-for child in root:
-    #print("atribut", child.attrib,"tag",child.tag) 
-    opcode=(child.attrib['opcode'])
-    
-    if (opcode=="WRITE"):
-        CheckPocetArgumentuInstukce(child,1)
-        if child[0].attrib['type'] == "var":
-            try:
-                variables.index(child[0].text)
-            except ValueError:  #hodnota nebyla definovana => error a pridame
-                print("WRITE nedefinovana proměnna")
-                exit(52)
+for child in root: #projiti vsech instrukci a ulozeni do listu all, labely do labels a cisla instrukci do numbers
+    if(child.attrib['opcode']=="LABEL"): #pokud label, kontrola zda už nebyl a pak ulozeni do labelu
+        try:
+            labels.index(child[0].text)
+        except:
+            pass
+        else:
+            print("Label podruhe") #DEBUG
+            exit(32)
+        labels.append(child[0].text)
+    all.append(child[0].text)
+    try: #pokud se podari najit chyba, už jeden label byl
+        numbers.index(child.attrib['order'])
+    except:
+        pass
+    else:
+        print("Opakuje se stejne instruction order") # DEBUG
+        exit(32)
+    if(int(child.attrib['order'])<1):
+        exit(32)
+    numbers.append(child.attrib['order'])
+
+
+def prochazej(root):
+    for child in root:
+        #print("atribut", child.attrib,"tag",child.tag) 
+        opcode=(child.attrib['opcode'])
+        
+        if (opcode=="WRITE"):
+            CheckPocetArgumentuInstukce(child,1)
+            if child[0].attrib['type'] == "var":
+                try:
+                    variables.index(child[0].text)
+                except ValueError:  #hodnota nebyla definovana => error a pridame
+                    print("WRITE nedefinovana proměnna")
+                    exit(52)
+                else:
+                    print(variablesValues[index][1])#DEBUG
             else:
-                print(variablesValues[index][1])#DEBUG
-        else:
-            print(child[0].text) #Samotný výpis WRITU == NEMAZAT!
-    elif (opcode=="DEFVAR"):
-        for arg in child:
-            argtype=arg.attrib['type']
-            CheckTypes(argtype,arg.text)
-        try:
-            variables.index(arg.text)
-        except ValueError:  #hodnota nebyla definovana => error a pridame
-            variables.append(arg.text)
-            variablesValues.append(["-","-"])
-        else:
-            print("Definice proměnne podruhé!")#DEBUG
-            exit(52)
-    elif (opcode=="MOVE"):
-        CheckPocetArgumentuInstukce(child,2)
-        if child[0].attrib['type']!="var":
-            print("MOVE arg1 neni VAR") #DEBUG
-            exit(52)
-        try:
-            index=variables.index(child[0].text)
-        except ValueError:  #hodnota nebyla definovana => error a pridame
-            print("promenna",child[0].text,"nebyla definovana" ) #DEBUG
-            exit(55)
-        else:
-            print("s",variablesValues[index][0])
-            print("s",variablesValues[index][1])
-            if variablesValues[index][0] == "-":
-                variablesValues[index][0] = child[1].attrib['type']
-                variablesValues[index][1] = child[1].text
- 
-    elif (opcode=="CREATEFRAME"):
-        BylCreatframe=True
-        TF=None
-    elif (opcode=="PUSHFRAME"):
-        if BylCreatframe == False:
-            print("Pokus o přístup k nedefinovanému rámci") #DEBUG
-            exit(55)
-        LF=TF
-        LFStack.append(TF)
-        BylCreatframe=False
-    elif (opcode=="POPFRAME"):
-        try:
-            TF=LFStack.pop()
-        except IndexError:
-            print("Chyba POPFRAME-prazdny zasobnik")
-            exit(55)
-        BylCreatframe=True #TODO toto udelat spravně
-    elif (opcode=="ADD" or opcode=="SUB" or opcode=="MUL" or opcode=="IDIV"):
-        CheckPocetArgumentuInstukce(child,3)
-        if child[0].attrib['type'] == "var" and child[1].attrib['type'] == "int" and child[2].attrib['type'] == "int":
+                print(child[0].text) #Samotný výpis WRITU == NEMAZAT!
+        elif (opcode=="DEFVAR"):
+            for arg in child:
+                argtype=arg.attrib['type']
+                CheckTypes(argtype,arg.text)
+            try:
+                variables.index(arg.text)
+            except ValueError:  #hodnota nebyla definovana => error a pridame
+                variables.append(arg.text)
+                variablesValues.append(["-","-"])
+            else:
+                print("Definice proměnne podruhé!")#DEBUG
+                exit(52)
+        elif (opcode=="MOVE"):
+            CheckPocetArgumentuInstukce(child,2)
+            if child[0].attrib['type']!="var":
+                print("MOVE arg1 neni VAR") #DEBUG
+                exit(52)
             try:
                 index=variables.index(child[0].text)
             except ValueError:  #hodnota nebyla definovana => error a pridame
                 print("promenna",child[0].text,"nebyla definovana" ) #DEBUG
                 exit(55)
             else:
-                if variablesValues[index][0] != "int":
-                    if variablesValues[index][0] == "-":
-                        variablesValues[index][0] = "int"
-                    else:
-                        print("Spatny typ variable v ADD")
-                        exit(53)
-                if opcode=="ADD": #todo for variables
-                    variablesValues[index][1] = int(child[1].text) + int(child[2].text)
-                elif opcode=="SUB":
-                    variablesValues[index][1] = int(child[1].text) - int(child[2].text)
-                elif opcode=="MUL":
-                    variablesValues[index][1] = int(child[1].text) * int(child[2].text)
-                else: #IDIV
-                    if int(child[2].text) == 0:
-                        print("Dělění nulou")
-                        exit(57)
-                    variablesValues[index][1] = int(child[1].text) // int(child[2].text) #zapsani vysledku do proměnne                 
-        else:
-            print("Špatne typy opernadu ADD")
-            exit(53)
-    elif (opcode=="LT" or opcode=="GT" or opcode=="EQ"):
-        CheckPocetArgumentuInstukce(child,3)
-        
-
-
+                print("s",variablesValues[index][0])
+                print("s",variablesValues[index][1])
+                if variablesValues[index][0] == "-":
+                    variablesValues[index][0] = child[1].attrib['type']
+                    variablesValues[index][1] = child[1].text
     
+        elif (opcode=="CREATEFRAME"):
+            BylCreatframe=True
+            TF=None
+        elif (opcode=="PUSHFRAME"):
+            if BylCreatframe == False:
+                print("Pokus o přístup k nedefinovanému rámci") #DEBUG
+                exit(55)
+            LF=TF
+            LFStack.append(TF)
+            BylCreatframe=False
+        elif (opcode=="POPFRAME"):
+            try:
+                TF=LFStack.pop()
+            except IndexError:
+                print("Chyba POPFRAME-prazdny zasobnik")
+                exit(55)
+            BylCreatframe=True #TODO toto udelat spravně
+        elif (opcode=="ADD" or opcode=="SUB" or opcode=="MUL" or opcode=="IDIV"):
+            CheckPocetArgumentuInstukce(child,3)
+            if child[0].attrib['type'] == "var" and child[1].attrib['type'] == "int" and child[2].attrib['type'] == "int":
+                try:
+                    index=variables.index(child[0].text)
+                except ValueError:  #hodnota nebyla definovana => error a pridame
+                    print("promenna",child[0].text,"nebyla definovana" ) #DEBUG
+                    exit(55)
+                else:
+                    if variablesValues[index][0] != "int":
+                        if variablesValues[index][0] == "-":
+                            variablesValues[index][0] = "int"
+                        else:
+                            print("Spatny typ variable v ADD")
+                            exit(53)
+                    if opcode=="ADD": #todo for variables
+                        variablesValues[index][1] = int(child[1].text) + int(child[2].text)
+                    elif opcode=="SUB":
+                        variablesValues[index][1] = int(child[1].text) - int(child[2].text)
+                    elif opcode=="MUL":
+                        variablesValues[index][1] = int(child[1].text) * int(child[2].text)
+                    else: #IDIV
+                        if int(child[2].text) == 0:
+                            print("Dělění nulou")
+                            exit(57)
+                        variablesValues[index][1] = int(child[1].text) // int(child[2].text) #zapsani vysledku do proměnne                 
+            else:
+                print("Špatne typy opernadu ADD")
+                exit(53)
+        elif (opcode=="LT" or opcode=="GT" or opcode=="EQ"):
+            CheckPocetArgumentuInstukce(child,3)
+        
+        elif(opcode=="JUMP" or opcode=="LABEL"):
+            CheckPocetArgumentuInstukce(child,1)
+            if child[0].attrib['type'] != "label":
+                exit(32)
+            if(opcode=="JUMP"):
+                prochazej(root[all.index(child[0].text)-1:])
+    exit(0)
 
+                 
 
-
-
-
+prochazej(root)
 print("OK")
 exit(0)
