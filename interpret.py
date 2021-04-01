@@ -123,8 +123,8 @@ def VarTypeCheckReturn(child,datovytyp):
             if variablesValues[index][0] == datovytyp:
                 return variablesValues[index][1]
             else:
-                print("Chyba ")
-                exit(55)
+                print("Chybas")
+                exit(53)
     else:
         print("Špatné typy operandů")
         exit(53)
@@ -169,7 +169,7 @@ for child in root: #projiti vsech instrukci a ulozeni do listu all, labely do la
             print("Label podruhe") #DEBUG
             exit(32)
         labels.append(child[0].text)
-    if(child.attrib['opcode']=="JUMP"):
+    if(child.attrib['opcode']=="JUMP" or child.attrib['opcode']=="JUMPIFEQ" or child.attrib['opcode']== "JUMPIFNEQ"):
         all.append("jump_"+child[0].text)
     else:
          all.append(child[0].text)
@@ -249,33 +249,23 @@ def prochazej(root):
             BylCreatframe=True #TODO toto udelat spravně
         elif (opcode=="ADD" or opcode=="SUB" or opcode=="MUL" or opcode=="IDIV"):
             CheckPocetArgumentuInstukce(child,3)
-            if child[0].attrib['type'] == "var" and child[1].attrib['type'] == "int" and child[2].attrib['type'] == "int":
-                try:
-                    index=variables.index(child[0].text)
-                except ValueError:  #hodnota nebyla definovana => error a pridame
-                    print("promenna",child[0].text,"nebyla definovana" ) #DEBUG
-                    exit(55)
-                else:
-                    if variablesValues[index][0] != "int":
-                        if variablesValues[index][0] == "-":
-                            variablesValues[index][0] = "int"
-                        else:
-                            print("Spatny typ variable v ADD")
-                            exit(53)
-                    if opcode=="ADD": #todo for variables
-                        variablesValues[index][1] = int(child[1].text) + int(child[2].text)
-                    elif opcode=="SUB":
-                        variablesValues[index][1] = int(child[1].text) - int(child[2].text)
-                    elif opcode=="MUL":
-                        variablesValues[index][1] = int(child[1].text) * int(child[2].text)
-                    else: #IDIV
-                        if int(child[2].text) == 0:
-                            print("Dělění nulou")
-                            exit(57)
-                        variablesValues[index][1] = int(child[1].text) // int(child[2].text) #zapsani vysledku do proměnne                 
-            else:
-                print("Špatne typy opernadu ADD")
-                exit(53)
+            if child[0].attrib['type'] == "var":
+                index=VarCheckDefinovanaReturnIndex(child[0].text)
+                variablesValues[index][0]="int"
+                cislo1=int(VarTypeCheckReturn(child[1],"int"))
+                cislo2=int(VarTypeCheckReturn(child[2],"int"))               
+            if opcode=="ADD": #todo for variables
+                variablesValues[index][1] = cislo1 + cislo2
+            elif opcode=="SUB":
+                variablesValues[index][1] = cislo1 - cislo2
+            elif opcode=="MUL":
+                variablesValues[index][1] = cislo1 * cislo2
+            else: #IDIV
+                if cislo2 == 0:
+                    print("Dělění nulou")
+                    exit(57)
+                variablesValues[index][1] = cislo1 // cislo2 #zapsani vysledku do proměnne                 
+
         elif (opcode=="LT" or opcode=="GT" or opcode=="EQ"):
             CheckPocetArgumentuInstukce(child,3)
         
@@ -284,9 +274,31 @@ def prochazej(root):
             if child[0].attrib['type'] != "label":
                 exit(32)
             if(opcode=="JUMP"):
-                root=saveroot
-                prochazej(root[all.index(child[0].text):])
+                try:
+                    labels.index(child[0].text)
+                except:
+                    print("label neexistuje (JUMP)") #DEBUG
+                    exit(52)
+                else:
+                    root=saveroot
+                    prochazej(root[all.index(child[0].text):])
 
+        elif opcode=="JUMPIFEQ" or opcode=="JUMPIFNEQ":
+            CheckPocetArgumentuInstukce(child,3)
+            if (child[0].attrib['type'] != "label"):
+                exit(53)
+            hodnota1=VarTypeCheckReturn(child[1],child[1].attrib['type'])
+            hodnota2=VarTypeCheckReturn(child[2],child[1].attrib['type'])
+            if ((opcode=="JUMPIFEQ" and hodnota1==hodnota2) or (opcode=="JUMPIFNEQ" and hodnota1!=hodnota2)):
+                try:
+                    labels.index(child[0].text)
+                except:
+                    print("label neexistuje (JUMPIF)") #DEBUG
+                    exit(52)
+                else:
+                    root=saveroot
+                    prochazej(root[all.index(child[0].text):])
+                
         elif opcode=="STRLEN":
             CheckPocetArgumentuInstukce(child,2)
             str1=VarTypeCheckReturn(child[1],"string")
@@ -307,15 +319,16 @@ def prochazej(root):
                 variablesValues[index][0]="string"
                 variablesValues[index][1]=str1+str2
             else:
-                print("CHYBA CONCAT")
+                print("CHYBA CONCAT") #DEBUG
                 exit(53)
         elif  opcode=="GETCHAR":
             CheckPocetArgumentuInstukce(child,3)
             str1=VarTypeCheckReturn(child[1],"string")
             pozice=VarTypeCheckReturn(child[2],"int")
             try:
-                str1=str1[pozice]
+                str1=str1[int(pozice)]
             except:
+                print("ti")
                 exit(58)
             else:
                 if (child[0].attrib['type'] == "var"):
@@ -323,15 +336,83 @@ def prochazej(root):
                     variablesValues[index][0]="string"
                     variablesValues[index][1]=str1
                 else:
-                    print("CHYBA GETCHAR")
+                    print("CHYBA GETCHAR") #DEBUG
                     exit(53)
-                
-           
+        elif opcode=="SETCHAR":
+            CheckPocetArgumentuInstukce(child,3)
+            pozice=VarTypeCheckReturn(child[1],"int")
+            str1=VarTypeCheckReturn(child[2],"string")   
+            if (child[0].attrib['type'] == "var"):
+                index=VarCheckDefinovanaReturnIndex(child[0].text)
+                if(variablesValues[index][0]!="string"):
+                    exit(53) #TODO CHECK!
+                print(int(pozice),len(variablesValues[index][1]))
+                if int(pozice)>(len(variablesValues[index][1])-1):
+                     exit(58)
+                try:
+                   variablesValues[index][1] = variablesValues[index][1][:int(pozice)] + str1[0] + variablesValues[index][1][int(pozice):]
+                except:
+                    print("Chyba SETCHAR") #DEBUG
+                    exit(58)
+            else:
+                exit(53)
+        elif opcode=="TYPE":
+            CheckPocetArgumentuInstukce(child,2)
+            if (child[0].attrib['type'] == "var"):
+                index=VarCheckDefinovanaReturnIndex(child[0].text)
+                if child[1].attrib['type'] == "string" or child[1].attrib['type'] == "int" or child[1].attrib['type'] == "nil" or child[1].attrib['type'] == "bool":
+                    variablesValues[index][0]="string"
+                    variablesValues[index][1]=child[1].attrib['type']
+                else:
+                    index2=VarCheckDefinovanaReturnIndex(child[1].text)
+                    vartyp=variablesValues[index2][0]
+                    if vartyp=="-":
+                        variablesValues[index][1]=""
+                    else:
+                        variablesValues[index][1]=vartyp
 
+            else:
+                exit(53)
+        elif opcode=="INT2CHAR":
+            CheckPocetArgumentuInstukce(child,2)
+            if (child[0].attrib['type'] != "var"):
+                exit(53)
+            index=VarCheckDefinovanaReturnIndex(child[0].text)
+            znak=VarTypeCheckReturn(child[1],"int")
+            try:
+                znak=chr(int(znak))
+            except ValueError:
+                print("Chyba int2char") #DEBUG
+                exit(58)
+            else:
+                variablesValues[index][0]="string"
+                variablesValues[index][1]=znak
+        elif opcode=="STRI2INT":
+            CheckPocetArgumentuInstukce(child,3)
+            if (child[0].attrib['type'] != "var"):
+                exit(53)
+            str1=VarTypeCheckReturn(child[1],"string")
+            pozice=int(VarTypeCheckReturn(child[2],"int"))
+            index=VarCheckDefinovanaReturnIndex(child[0].text)
 
+            try:
+                znak=str1[pozice]
+                znak=ord(znak)
+            except: 
+                print("Chyba STRI2INT") #DEBUG
+                exit(58)
+            else:
+                variablesValues[index][0]="int"
+                variablesValues[index][1]=znak
+        elif opcode=="EXIT":
+            CheckPocetArgumentuInstukce(child,1)
+            pozice=int(VarTypeCheckReturn(child[0],"int"))
+            if pozice < 0 or pozice > 49:
+                print("CHyba exit")#DEBUG
+                exit(57)
+            exit(pozice)
 
-    print(variables)
-    print(variablesValues)
+    print("OK")
     exit(0)
 
                  
