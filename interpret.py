@@ -98,6 +98,10 @@ def CheckPocetArgumentuInstukce(child,pocet):
                 print("Error s počtem argumentů- CheckPocetArgumentuInstukce") #DEBUG
                 exit(32)
         CheckTypes(child[i].attrib['type'],child[i].text)
+        text=str(child[i])
+        if(text[10:13]!="arg" or int(text[13])!=(i+1)): #TODO or minimalně čeknout
+            print("Chyba v argumentu") #DEBUG
+            exit(32)
     try:
         child[pocet].attrib['type']
     except:
@@ -105,6 +109,36 @@ def CheckPocetArgumentuInstukce(child,pocet):
     else:
         print("Error s počtem argumentů- CheckPocetArgumentuInstukce") #DEBUG
         exit(32)
+
+def VarTypeCheckReturn(child,datovytyp):
+    if(child.attrib['type']==datovytyp):
+        return child.text
+    elif(child.attrib['type']=="var"):
+        try:
+            index=variables.index(child.text)
+        except ValueError:  #hodnota nebyla definovana => error a pridame
+            print("promenna",child.text,"nebyla definovana" ) #DEBUG
+            exit(55)
+        else:
+            if variablesValues[index][0] == datovytyp:
+                return variablesValues[index][1]
+            else:
+                print("Chyba ")
+                exit(55)
+    else:
+        print("Špatné typy operandů")
+        exit(53)
+def VarCheckDefinovanaReturnIndex(variable):
+    try:
+        index=variables.index(variable)
+    except ValueError:  #hodnota nebyla definovana => error a pridame
+        print("promenna",variable,"nebyla definovana" ) #DEBUG
+        exit(54)
+    else:
+        return index
+
+            
+                
 #-----------------------------------------------------------------------------------------------------
 try:
     if(BylSource==True):  #pokud je source file jako parametr, jinak stdin
@@ -135,7 +169,11 @@ for child in root: #projiti vsech instrukci a ulozeni do listu all, labely do la
             print("Label podruhe") #DEBUG
             exit(32)
         labels.append(child[0].text)
-    all.append(child[0].text)
+    if(child.attrib['opcode']=="JUMP"):
+        all.append("jump_"+child[0].text)
+    else:
+         all.append(child[0].text)
+    
     try: #pokud se podari najit chyba, už jeden label byl
         numbers.index(child.attrib['order'])
     except:
@@ -147,22 +185,22 @@ for child in root: #projiti vsech instrukci a ulozeni do listu all, labely do la
         exit(32)
     numbers.append(child.attrib['order'])
 
-
 def prochazej(root):
     for child in root:
         #print("atribut", child.attrib,"tag",child.tag) 
         opcode=(child.attrib['opcode'])
+        opcode = opcode.upper()
         
         if (opcode=="WRITE"):
             CheckPocetArgumentuInstukce(child,1)
             if child[0].attrib['type'] == "var":
                 try:
-                    variables.index(child[0].text)
+                    index=variables.index(child[0].text)
                 except ValueError:  #hodnota nebyla definovana => error a pridame
                     print("WRITE nedefinovana proměnna")
                     exit(52)
                 else:
-                    print(variablesValues[index][1])#DEBUG
+                    print(variablesValues[index][1])#Samotný výpis WRITU == NEMAZAT!
             else:
                 print(child[0].text) #Samotný výpis WRITU == NEMAZAT!
         elif (opcode=="DEFVAR"):
@@ -188,8 +226,6 @@ def prochazej(root):
                 print("promenna",child[0].text,"nebyla definovana" ) #DEBUG
                 exit(55)
             else:
-                print("s",variablesValues[index][0])
-                print("s",variablesValues[index][1])
                 if variablesValues[index][0] == "-":
                     variablesValues[index][0] = child[1].attrib['type']
                     variablesValues[index][1] = child[1].text
@@ -248,11 +284,59 @@ def prochazej(root):
             if child[0].attrib['type'] != "label":
                 exit(32)
             if(opcode=="JUMP"):
-                prochazej(root[all.index(child[0].text)-1:])
+                root=saveroot
+                prochazej(root[all.index(child[0].text):])
+
+        elif opcode=="STRLEN":
+            CheckPocetArgumentuInstukce(child,2)
+            str1=VarTypeCheckReturn(child[1],"string")
+            if (child[0].attrib['type'] == "var"):
+                index=VarCheckDefinovanaReturnIndex(child[0].text)
+                variablesValues[index][0]="int"
+                variablesValues[index][1]=len(str1)
+            else:
+                print("chyba STRLEN") #DEBUG
+                exit(53)
+               
+        elif  opcode=="CONCAT":
+            CheckPocetArgumentuInstukce(child,3)
+            str1=VarTypeCheckReturn(child[1],"string")
+            str2=VarTypeCheckReturn(child[2],"string")
+            if (child[0].attrib['type'] == "var"):
+                index=VarCheckDefinovanaReturnIndex(child[0].text)
+                variablesValues[index][0]="string"
+                variablesValues[index][1]=str1+str2
+            else:
+                print("CHYBA CONCAT")
+                exit(53)
+        elif  opcode=="GETCHAR":
+            CheckPocetArgumentuInstukce(child,3)
+            str1=VarTypeCheckReturn(child[1],"string")
+            pozice=VarTypeCheckReturn(child[2],"int")
+            try:
+                str1=str1[pozice]
+            except:
+                exit(58)
+            else:
+                if (child[0].attrib['type'] == "var"):
+                    index=VarCheckDefinovanaReturnIndex(child[0].text)
+                    variablesValues[index][0]="string"
+                    variablesValues[index][1]=str1
+                else:
+                    print("CHYBA GETCHAR")
+                    exit(53)
+                
+           
+
+
+
+    print(variables)
+    print(variablesValues)
     exit(0)
 
                  
-
+saveroot=root
 prochazej(root)
+
 print("OK")
 exit(0)
