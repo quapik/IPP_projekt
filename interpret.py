@@ -145,7 +145,7 @@ try:
         tree = ET.parse(sourcefile)
     else:
         tree = ET.parse(sys.stdin)
-except IOError:
+except:
     print("Nejde otevrit vstupni soubor") #DEBUG
     exit(11)
 root = tree.getroot()
@@ -171,6 +171,8 @@ for child in root: #projiti vsech instrukci a ulozeni do listu all, labely do la
         labels.append(child[0].text)
     if(child.attrib['opcode']=="JUMP" or child.attrib['opcode']=="JUMPIFEQ" or child.attrib['opcode']== "JUMPIFNEQ"):
         all.append("jump_"+child[0].text)
+    elif child.attrib['opcode']=="BREAK":
+        all.append("instrukceBREAK")
     else:
          all.append(child[0].text)
     
@@ -190,7 +192,6 @@ def prochazej(root):
         #print("atribut", child.attrib,"tag",child.tag) 
         opcode=(child.attrib['opcode'])
         opcode = opcode.upper()
-        
         if (opcode=="WRITE"):
             CheckPocetArgumentuInstukce(child,1)
             if child[0].attrib['type'] == "var":
@@ -264,11 +265,7 @@ def prochazej(root):
                 if cislo2 == 0:
                     print("Dělění nulou")
                     exit(57)
-                variablesValues[index][1] = cislo1 // cislo2 #zapsani vysledku do proměnne                 
-
-        elif (opcode=="LT" or opcode=="GT" or opcode=="EQ"):
-            CheckPocetArgumentuInstukce(child,3)
-        
+                variablesValues[index][1] = cislo1 // cislo2 #zapsani vysledku do proměnne              
         elif(opcode=="JUMP" or opcode=="LABEL"):
             CheckPocetArgumentuInstukce(child,1)
             if child[0].attrib['type'] != "label":
@@ -411,6 +408,75 @@ def prochazej(root):
                 print("CHyba exit")#DEBUG
                 exit(57)
             exit(pozice)
+        elif opcode=="AND" or opcode=="OR":
+            CheckPocetArgumentuInstukce(child,3)
+            if (child[0].attrib['type'] != "var"):
+                exit(53)
+            index=VarCheckDefinovanaReturnIndex(child[0].text)
+            bool1=VarTypeCheckReturn(child[1],"bool")
+            bool2=VarTypeCheckReturn(child[2],"bool")
+            variablesValues[index][0]="bool"
+            if opcode=="AND":
+                if bool1=="true" and bool2=="true":
+                     variablesValues[index][1]="true" 
+                else:
+                    variablesValues[index][1]="false"          
+            else:
+                if bool1=="true" or bool2=="true":
+                    variablesValues[index][1]="true"
+                else:
+                    variablesValues[index][1]="false"
+        elif opcode=="NOT":
+            CheckPocetArgumentuInstukce(child,2)
+            if (child[0].attrib['type'] != "var"):
+                exit(53)
+            index=VarCheckDefinovanaReturnIndex(child[0].text)
+            variablesValues[index][0]="bool"
+            bool1=VarTypeCheckReturn(child[1],"bool") #negace, proste nastaveni opacne hodnoty
+            if bool1=="true":
+                variablesValues[index][1]="false"
+            else:
+                variablesValues[index][1]="true"
+        elif opcode=="GT" or opcode=="LT":
+            CheckPocetArgumentuInstukce(child,3)
+            if (child[0].attrib['type'] != "var"):
+                exit(53)
+            if (child[1].attrib['type']=="nil" or child[2].attrib['type']=="nil"): #todo pro proměnny
+                exit(53)
+            print(child[1].attrib['type'])
+            hodnota1=VarTypeCheckReturn(child[1],child[1].attrib['type']) #TODDDDDDDDDDDDDDDDDDDDDd
+            hodnota2=VarTypeCheckReturn(child[2],child[1].attrib['type'])
+            print(hodnota1,hodnota2)
+            index=VarCheckDefinovanaReturnIndex(child[0].text)
+            variablesValues[index][0]="bool"
+            if opcode=="LT":
+                if hodnota1<hodnota2:
+                    variablesValues[index][1]="true"
+                else:
+                    variablesValues[index][1]="false"
+            else:
+                if hodnota1>hodnota2:
+                    variablesValues[index][1]="true"
+                else:
+                    variablesValues[index][1]="false"
+        elif opcode=="DPRINT":
+            CheckPocetArgumentuInstukce(child,1)
+            if (child[0].attrib['type'] == "var"):
+                index=VarCheckDefinovanaReturnIndex(child[0].text)
+                sys.stderr.write(variablesValues[index][1])
+            else:
+                sys.stderr.write(child[0].text)
+        elif opcode=="BREAK": #TODO
+            CheckPocetArgumentuInstukce(child,0)
+            sys.stderr.write("BREAK TODO")
+
+
+
+
+        else:
+            print("neznama instrukce")
+   
+
 
     print("OK")
     exit(0)
