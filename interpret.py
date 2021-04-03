@@ -28,7 +28,7 @@ else:
         BylSource=True
 
     elif(sys.argv[1][0:8]=="--input="):
-        inputfile=sys.argv[1][8:len(sys.argv[1])]
+        inputname=sys.argv[1][8:len(sys.argv[1])]
         BylInput=True
     else:
         print("errror - spatny argument")
@@ -43,7 +43,7 @@ else:
     elif(sys.argv[2][0:8]=="--input="):
         if(BylInput is True):
             exit(10) #chech exit
-        inputfile=sys.argv[2][8:len(sys.argv[2])]
+        inputname=sys.argv[2][8:len(sys.argv[2])]
         BylInput=True
     else:
         print("errror - spatny argument") #DEBUG
@@ -59,6 +59,8 @@ LFStack=[]
 all=[]
 labels=[]
 numbers=[]
+stackValues = []
+stackVolani = []
 SymbolTypeList=["int","var","nil","string","bool"]
 BylCreatframe=False
 TF=None
@@ -83,7 +85,9 @@ def CheckTypes(argtype,data):
     elif argtype=="nil":
         if data != "nil":
             exit(32)
-
+    elif argtype=="type":
+        if not (re.search('(int|bool|string)$',data)):
+            exit(32)
     else:
         print("Špatný argtyp")
         exit(32)
@@ -141,18 +145,23 @@ def VarCheckDefinovanaReturnIndex(variable):
         return index
 
             
-                
 #-----------------------------------------------------------------------------------------------------
 try:
     if(BylSource==True):  #pokud je source file jako parametr, jinak stdin
         tree = ET.parse(sourcefile)
     else:
         tree = ET.parse(sys.stdin)
+    if(BylInput==True):
+        inputfile = open(inputname, 'r')
+    else:
+        inputfile=sys.stdin
 except:
     print("Nejde otevrit vstupni soubor") #DEBUG
     exit(11)
 root = tree.getroot()
 
+for child in root: #seradit ordery poporade
+   root[:] = sorted(root, key=lambda child: int(child.get('order')))
 try:
     language = root.attrib['language'] #kontrola zda je atribut language a nasledne že je Ippcode
 except:
@@ -172,10 +181,12 @@ for child in root: #projiti vsech instrukci a ulozeni do listu all, labely do la
             print("Label podruhe") #DEBUG
             exit(32)
         labels.append(child[0].text)
-    if(child.attrib['opcode']=="JUMP" or child.attrib['opcode']=="JUMPIFEQ" or child.attrib['opcode']== "JUMPIFNEQ"):
+    if(child.attrib['opcode']=="JUMP" or child.attrib['opcode']=="JUMPIFEQ" or child.attrib['opcode']== "JUMPIFNEQ"  or child.attrib['opcode']== "CALL"):
         all.append("jump_"+child[0].text)
     elif child.attrib['opcode']=="BREAK":
         all.append("instrukceBREAK")
+    elif child.attrib['opcode']=="RETURN":
+        all.append("instrukceRETURN")
     else:
          all.append(child[0].text)
     
@@ -198,24 +209,23 @@ def prochazej(root):
         if (opcode=="WRITE"):
             CheckPocetArgumentuInstukce(child,1)
             if child[0].attrib['type'] == "var":
-                try:
-                    index=variables.index(child[0].text)
-                except ValueError:  #hodnota nebyla definovana => error a pridame
-                    print("WRITE nedefinovana proměnna")
-                    exit(52)
+                index=VarCheckDefinovanaReturnIndex(child[0].text)
+                if variablesValues[index][0]=="nil":
+                    print("",end='')
                 else:
-                    print(variablesValues[index][1])#Samotný výpis WRITU == NEMAZAT!
+                    print(variablesValues[index][1],end='')#Samotný výpis WRITU == NEMAZAT! 
             else:
-                print(child[0].text) #Samotný výpis WRITU == NEMAZAT!
+                if child[0].attrib['type']=="nil":
+                    print("",end='')
+                else:
+                    print(child[0].text,end='') #Samotný výpis WRITU == NEMAZAT!
         elif (opcode=="DEFVAR"):
-            for arg in child:
-                argtype=arg.attrib['type']
-                CheckTypes(argtype,arg.text)
+            CheckPocetArgumentuInstukce(child,1)
             try:
-                variables.index(arg.text)
-            except ValueError:  #hodnota nebyla definovana => error a pridame
-                variables.append(arg.text)
-                variablesValues.append(["-","-"])
+                variables.index(child[0].text)
+            except:  #hodnota nebyla definovana => error a pridame
+                variables.append(child[0].text)
+                variablesValues.append([None,None])
             else:
                 print("Definice proměnne podruhé!")#DEBUG
                 exit(52)
@@ -224,16 +234,41 @@ def prochazej(root):
             if child[0].attrib['type']!="var":
                 print("MOVE arg1 neni VAR") #DEBUG
                 exit(52)
-            try:
-                index=variables.index(child[0].text)
-            except ValueError:  #hodnota nebyla definovana => error a pridame
-                print("promenna",child[0].text,"nebyla definovana" ) #DEBUG
-                exit(55)
-            else:
-                if variablesValues[index][0] == "-":
-                    variablesValues[index][0] = child[1].attrib['type']
-                    variablesValues[index][1] = child[1].text
-    
+            index=VarCheckDefinovanaReturnIndex(child[0].text)
+            variablesValues[index][0] = child[1].attrib['type']
+            variablesValues[index][1] = child[1].text
+        elif opcode=="READ":
+            CheckPocetArgumentuInstukce(child,2)
+            if child[0].attrib['type']!="var" or child[1].attrib['type']!="type":
+                 exit(52)
+            index=VarCheckDefinovanaReturnIndex(child[0].text)
+            datovytyp=child[1].text #v textove casti je datovy typ co se nacita (int,bool,string)
+            hodnota=inputfile.readline() #nacteni z input souboru
+            chyba=False
+            if datovytyp=="int":
+                try:
+                    hodnota=int(hodnota)
+                except ValueError: #pokud tam neni hodnota co nejde prevest na int => bude nil@nil
+                    chyba=True
+                else:
+                    variablesValues[index][0]="int"
+                    variablesValues[index][1]=hodnota
+            elif datovytyp=="string":
+                if isinstance(hodnota, str):
+                    variablesValues[index][0]="string"
+                    variablesValues[index][1]=hodnota
+                else:
+                    chyba=True
+            elif datovytyp=="bool": #true na true, vse ostatni na false
+                variablesValues[index][0]="bool"
+                if hodnota.lower() == "true":
+                    variablesValues[index][1]="true"
+                else:
+                    variablesValues[index][1]="false"
+            if (chyba is True):
+                variablesValues[index][0]="nil"
+                variablesValues[index][1]="nil"
+
         elif (opcode=="CREATEFRAME"):
             BylCreatframe=True
             TF=None
@@ -331,7 +366,6 @@ def prochazej(root):
             try:
                 str1=str1[int(pozice)]
             except:
-                print("ti")
                 exit(58)
             else:
                 if (child[0].attrib['type'] == "var"):
@@ -530,6 +564,28 @@ def prochazej(root):
                     variablesValues[index][1]="false"
             variablesValues[index][0]="bool"
 
+        elif opcode=="PUSHS":
+            CheckPocetArgumentuInstukce(child,1)
+            if (child[0].attrib['type'] != "var"):
+                stackValues.append([child[0].attrib['type'],child[0].text])
+            else:
+                index=VarCheckDefinovanaReturnIndex(child[0].text)
+                stackValues.append([variablesValues[index][0],variablesValues[index][1]])
+
+           
+        elif opcode=="POPS":
+            CheckPocetArgumentuInstukce(child,1)
+            if (child[0].attrib['type'] != "var"):
+                exit(53)
+            index=VarCheckDefinovanaReturnIndex(child[0].text)
+            try:
+                pop=stackValues.pop()
+            except:
+                print("Prazdny stack") #DEBUG
+                exit(56)
+            variablesValues[index][0]=pop[0]
+            variablesValues[index][1]=pop[1]
+
         elif opcode=="DPRINT":
             CheckPocetArgumentuInstukce(child,1)
             if (child[0].attrib['type'] == "var"):
@@ -540,13 +596,35 @@ def prochazej(root):
         elif opcode=="BREAK": #TODO
             CheckPocetArgumentuInstukce(child,0)
             sys.stderr.write("BREAK TODO")
-
-
+        
+        elif opcode=="CALL":
+            CheckPocetArgumentuInstukce(child,1)
+            if (child[0].attrib['type'] != "label"):
+                exit(53)
+            try:
+                labels.index(child[0].text)
+            except:
+                print("label neexistuje (JUMP)") #DEBUG
+                exit(52)
+            else:
+                root=saveroot
+                stackVolani.append("jump_"+child[0].text) #ulozeni takto aby se rozlislo od labelu
+                prochazej(root[all.index(child[0].text):]) #skok na label
+            
+        elif opcode=="RETURN":
+            CheckPocetArgumentuInstukce(child,0) #popnuti hodnoty odkud byl call
+            try:
+                pozice=stackVolani.pop()
+            except:
+                print("Prazdny stack") #DEBUG
+                exit(56)
+            else:
+                print(pozice)
+                root=saveroot
+                prochazej(root[all.index(pozice):]) #skok na ni
         else:
             print("neznama instrukce")
-   
-
-
+           
     print("OK")
     exit(0)
 
