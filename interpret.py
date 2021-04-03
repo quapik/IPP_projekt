@@ -80,6 +80,9 @@ def CheckTypes(argtype,data):
             exit(32)
     elif argtype=="label":
         pass
+    elif argtype=="nil":
+        if data != "nil":
+            exit(32)
 
     else:
         print("Špatný argtyp")
@@ -253,8 +256,11 @@ def prochazej(root):
             if child[0].attrib['type'] == "var":
                 index=VarCheckDefinovanaReturnIndex(child[0].text)
                 variablesValues[index][0]="int"
-                cislo1=int(VarTypeCheckReturn(child[1],"int"))
-                cislo2=int(VarTypeCheckReturn(child[2],"int"))               
+                try:
+                    cislo1=int(VarTypeCheckReturn(child[1],"int"))
+                    cislo2=int(VarTypeCheckReturn(child[2],"int"))         
+                except:
+                    exit(57)      
             if opcode=="ADD": #todo for variables
                 variablesValues[index][1] = cislo1 + cislo2
             elif opcode=="SUB":
@@ -437,18 +443,28 @@ def prochazej(root):
                 variablesValues[index][1]="false"
             else:
                 variablesValues[index][1]="true"
+
         elif opcode=="GT" or opcode=="LT":
             CheckPocetArgumentuInstukce(child,3)
             if (child[0].attrib['type'] != "var"):
                 exit(53)
-            if (child[1].attrib['type']=="nil" or child[2].attrib['type']=="nil"): #todo pro proměnny
+            if (child[1].attrib['type']=="nil" or child[2].attrib['type']=="nil"): #v GT a LT nemůže být nil
                 exit(53)
-            print(child[1].attrib['type'])
-            hodnota1=VarTypeCheckReturn(child[1],child[1].attrib['type']) #TODDDDDDDDDDDDDDDDDDDDDd
-            hodnota2=VarTypeCheckReturn(child[2],child[1].attrib['type'])
-            print(hodnota1,hodnota2)
+            if child[1].attrib['type']!="var" and child[2].attrib['type']!="var":
+                datovytypeporovnavani=child[1].attrib['type']
+            if child[1].attrib['type']=="var":
+                index1=VarCheckDefinovanaReturnIndex(child[1].text)
+                datovytypeporovnavani=variablesValues[index1][0]
+            if child[2].attrib['type']=="var":
+                index1=VarCheckDefinovanaReturnIndex(child[2].text)
+                datovytypeporovnavani=variablesValues[index1][0]
+            hodnota1=VarTypeCheckReturn(child[1],datovytypeporovnavani)
+            hodnota2=VarTypeCheckReturn(child[2],datovytypeporovnavani)
             index=VarCheckDefinovanaReturnIndex(child[0].text)
             variablesValues[index][0]="bool"
+            if datovytypeporovnavani=="int":
+                hodnota1=int(hodnota1)
+                hodnota2=int(hodnota2)
             if opcode=="LT":
                 if hodnota1<hodnota2:
                     variablesValues[index][1]="true"
@@ -459,6 +475,61 @@ def prochazej(root):
                     variablesValues[index][1]="true"
                 else:
                     variablesValues[index][1]="false"
+
+        elif opcode=="EQ":
+            CheckPocetArgumentuInstukce(child,3)
+            if (child[0].attrib['type'] != "var"):
+                exit(53)
+            index=VarCheckDefinovanaReturnIndex(child[0].text)
+            if (child[1].attrib['type']=="nil" or child[2].attrib['type']=="nil"): #pokud konstatny a jedna z nich je nil, rovnou víme výsledek
+                if (child[1].attrib['type']=="nil" and child[2].attrib['type']=="nil"):
+                    variablesValues[index][0]="true"
+                else:
+                    if child[1].attrib['type']=="nil":
+                        datovytypeporovnavani1="nil"
+                    else:
+                        datovytypeporovnavani="nil"
+
+            if child[1].attrib['type']!="var" and child[2].attrib['type']!="var":
+                datovytypeporovnavani=child[1].attrib['type']
+            nilcounter=0
+            if child[1].attrib['type']=="var":
+                index1=VarCheckDefinovanaReturnIndex(child[1].text)
+                datovytypeporovnavani1=variablesValues[index1][0]
+                if  datovytypeporovnavani1=="nil":
+                    nilcounter=nilcounter+1
+            else:
+                datovytypeporovnavani1=child[1].attrib['type']
+                if  datovytypeporovnavani1=="nil":
+                    nilcounter=nilcounter+1
+            if child[2].attrib['type']=="var":
+                index2=VarCheckDefinovanaReturnIndex(child[2].text)
+                datovytypeporovnavani=variablesValues[index2][0]
+                if  datovytypeporovnavani=="nil":
+                    datovytypeporovnavani=datovytypeporovnavani1
+                    nilcounter=nilcounter+1
+            else:
+                datovytypeporovnavani=child[2].attrib['type']
+                if  datovytypeporovnavani=="nil":
+                    datovytypeporovnavani=datovytypeporovnavani1
+                    nilcounter=nilcounter+1
+            if nilcounter!=0: #pokud aspon jedna z promennych je var
+                if nilcounter == 1:
+                    variablesValues[index][1]="false"
+                if nilcounter == 2:
+                    variablesValues[index][1]="true"
+            else:
+                hodnota1=VarTypeCheckReturn(child[1],datovytypeporovnavani)
+                hodnota2=VarTypeCheckReturn(child[2],datovytypeporovnavani)
+                if datovytypeporovnavani=="int":
+                    hodnota1=int(hodnota1)
+                    hodnota2=int(hodnota2)
+                if hodnota1==hodnota2:
+                    variablesValues[index][1]="true"
+                else:
+                    variablesValues[index][1]="false"
+            variablesValues[index][0]="bool"
+
         elif opcode=="DPRINT":
             CheckPocetArgumentuInstukce(child,1)
             if (child[0].attrib['type'] == "var"):
@@ -469,8 +540,6 @@ def prochazej(root):
         elif opcode=="BREAK": #TODO
             CheckPocetArgumentuInstukce(child,0)
             sys.stderr.write("BREAK TODO")
-
-
 
 
         else:
