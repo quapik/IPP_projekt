@@ -1,6 +1,7 @@
 <?php
 #Vojtěch Šíma, xsimav01, IPP FIT VUT 2021
-$BylDircetory=$BylRecursive=$BylParseScript=$BylInterpretScript=$ParseOnly=$IntOnly=$Byljexamxml=$Byljexamcfg=false;
+$BylDircetory=$BylParseScript=$BylInterpretScript=$ParseOnly=$IntOnly=$Byljexamxml=$Byljexamcfg=false;
+$BylRecursive=false;
 if ($argv[1]=="--help")
     {
         if ($argc==2)
@@ -22,21 +23,26 @@ if ($argv[1]=="--help")
     }   
 for ($i=1; $i<$argc; $i++)
 {
-    echo ($argv[$i].PHP_EOL);
+    #echo ($argv[$i].PHP_EOL);
     if ($argv[$i]=="--help")
     {
         exit(10);
     } 
-    else if (preg_match("/^--directory=(\S)+$/",$argv[$i]))
-    {
+    else if (preg_match("/^--directory=(\S)*$/",$argv[$i]))
+    {   
         $BylDircetory=true;
-        $directorypath=explode("=",$argv[$i]);
+        $splitted=explode("=",$argv[$i]);
+        $directorypath=$splitted[1];
+        if (empty($directorypath))
+        {
+            $directorypath=getcwd();
+        }
     }
     else if ($argv[$i]=="--recursive")
     {
         $BylRecursive=true;
     }
-    else if (preg_match("/^--parse-script=(\S)+$/",$argv[$i]))
+    else if (preg_match("/^--parse-script=(\S)*$/",$argv[$i]))
     {
         $pom=explode("=",$argv[$i]);
         $parsefile=$pom[1];
@@ -68,6 +74,11 @@ for ($i=1; $i<$argc; $i++)
         $pom=explode("=",$argv[$i]);
         $jexamcfgfile=$pom[1];
     }
+    else
+    {
+        echo("spatny argument vstupu"); #DEBUG
+        exit(10); #TODO CHECK EXIT!
+    }
 }
 if ($ParseOnly==true)
 {
@@ -83,6 +94,69 @@ if ($IntOnly==true)
         exit(10);
     }
 }
-echo("OK");
+if ($BylParseScript==false)
+{
+    $parsefile=getcwd()."\parse.php";  #TODO LINUX
+}
+if ($BylInterpretScript==false)
+{
+    $BylInterpretScript=getcwd()."\interpret.py"; #TODO LINUX
+}
+
+function ProchazeniSlozky($directorypath)
+{
+#$directorypath=str_replace("\\","/",$directorypath);
+$open_dir=opendir($directorypath);
+while($filecheck = readdir($open_dir))
+{   
+    if($filecheck == "." OR $filecheck == "..")
+    {
+        continue; //ignorovani . a .. složek
+    }
+    
+    if ($GLOBALS["BylRecursive"]==True) #pokud je argumentem zvoleno rekurzivni volani slozek a narazim na slozku misto souboru => volam funkci
+    {
+        if(is_dir($directorypath . "/" . $filecheck))
+        {
+            ProchazeniSlozky(($directorypath . "/" . $filecheck));
+        }
+    }
+    
+    if(is_file($directorypath . "/" . $filecheck))
+    {
+        $directorypathfile=$directorypath . "/" . $filecheck;
+        
+        $ext = pathinfo($directorypathfile, PATHINFO_EXTENSION);
+        if ($ext == "src")
+        {
+            $onlyfilename=pathinfo($directorypathfile, PATHINFO_FILENAME);
+            CheckOrCreateFiles($onlyfilename,$directorypath);
+        }
+    }
+}
+}
+
+#Funkce na základě jména zjisti zda potřebné soubory pro kontrolu existují a pokud ne, tak vytvoří dle zadání prázdné
+function CheckOrCreateFiles($onlyfilename,$directorypath)
+{
+if (!(file_exists($directorypath . "/" .  $onlyfilename."rc")))
+{
+    touch($directorypath . "/" .  $onlyfilename .".rc");
+    #exec('echo "0">' . $directorypath . "/" .$onlyfilename . ".rc");
+}
+if (!(file_exists($directorypath . "/" .  $onlyfilename."out")))
+{
+    touch($directorypath . "/" .  $onlyfilename .".out");
+   
+}
+if (!(file_exists($directorypath . "/" .  $onlyfilename."in")))
+{
+    touch($directorypath . "/" .  $onlyfilename .".in");
+}
+}
+
+
+ProchazeniSlozky($directorypath);
+echo(PHP_EOL."OK");
 exit(0);
 ?>
