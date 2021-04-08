@@ -147,24 +147,46 @@ def VarCheckDefinovanaReturnIndex(variable):
             
 #-----------------------------------------------------------------------------------------------------
 try:
-    if(BylSource==True):  #pokud je source file jako parametr, jinak stdin
-        tree = ET.parse(sourcefile)
-    else:
-        tree = ET.parse(sys.stdin)
-    if(BylInput==True):
+    if(BylInput==True): #pokud je input file jako parametr, jinak stdin
         inputfile = open(inputname, 'r')
     else:
         inputfile=sys.stdin
 except:
     print("Nejde otevrit vstupni soubor") #DEBUG
-    exit(11)
+    exit(32)
+
+try:
+    if(BylSource==True):  #pokud je source file jako parametr, jinak stdin
+        tree = ET.parse(sourcefile)
+    else:
+        tree = ET.parse(sys.stdin)
+except:
+    exit(31) #pokud je nějaka chyba v načitanem xml souboru
 root = tree.getroot()
 
-for child in root: #seradit ordery poporade
-   root[:] = sorted(root, key=lambda child: int(child.get('order')))
+for child in root: 
+    if child.tag != "instruction": #kontrola spravneho childtagu
+        exit(32)
+    try:
+        child.attrib['opcode'] #kontrola zda jsou obsaženy atributy
+        child.attrib['order']
+    except:
+        exit(32) 
+    try:
+        int(child.get('order')) #kontrola že je order číslo
+    except ValueError:
+        exit(32)
+    root[:] = sorted(root, key=lambda child: int(child.get('order'))) #seřadit child podle čísla orderu
+    for arg in child:
+        child[:] = sorted(child, key=lambda arg: str(arg.tag)) #seřadit arg podle abecedy
+
+#Kontrola xml elemetů apod v rootu
 try:
     language = root.attrib['language'] #kontrola zda je atribut language a nasledne že je Ippcode
 except:
+    exit(32)
+
+if root.tag != "program":
     exit(32)
 
 if (language !='IPPcode21'):
@@ -172,6 +194,7 @@ if (language !='IPPcode21'):
     exit(32)
 
 for child in root: #projiti vsech instrukci a ulozeni do listu all, labely do labels a cisla instrukci do numbers
+
     if(child.attrib['opcode']=="LABEL"): #pokud label, kontrola zda už nebyl a pak ulozeni do labelu
         try:
             labels.index(child[0].text)
@@ -179,7 +202,7 @@ for child in root: #projiti vsech instrukci a ulozeni do listu all, labely do la
             pass
         else:
             print("Label podruhe") #DEBUG
-            exit(32)
+            exit(52)
         labels.append(child[0].text)
     if(child.attrib['opcode']=="JUMP" or child.attrib['opcode']=="JUMPIFEQ" or child.attrib['opcode']== "JUMPIFNEQ"  or child.attrib['opcode']== "CALL"):
         all.append("jump_"+child[0].text)
@@ -188,7 +211,10 @@ for child in root: #projiti vsech instrukci a ulozeni do listu all, labely do la
     elif child.attrib['opcode']=="RETURN":
         all.append("instrukceRETURN")
     else:
-         all.append(child[0].text)
+        try: 
+            all.append(child[0].text)
+        except:
+            exit(32)
     
     try: #pokud se podari najit chyba, už jeden label byl
         numbers.index(child.attrib['order'])
@@ -203,7 +229,6 @@ for child in root: #projiti vsech instrukci a ulozeni do listu all, labely do la
 
 def prochazej(root):
     for child in root:
-        #print("atribut", child.attrib,"tag",child.tag) 
         opcode=(child.attrib['opcode'])
         opcode = opcode.upper()
         if (opcode=="WRITE"):
@@ -244,6 +269,7 @@ def prochazej(root):
             index=VarCheckDefinovanaReturnIndex(child[0].text)
             datovytyp=child[1].text #v textove casti je datovy typ co se nacita (int,bool,string)
             hodnota=inputfile.readline() #nacteni z input souboru
+            hodnota = hodnota.replace('\n','')
             chyba=False
             if datovytyp=="int":
                 try:
@@ -295,7 +321,7 @@ def prochazej(root):
                     cislo1=int(VarTypeCheckReturn(child[1],"int"))
                     cislo2=int(VarTypeCheckReturn(child[2],"int"))         
                 except:
-                    exit(57)      
+                    exit(53)      
             if opcode=="ADD": #todo for variables
                 variablesValues[index][1] = cislo1 + cislo2
             elif opcode=="SUB":
@@ -319,15 +345,29 @@ def prochazej(root):
                     exit(52)
                 else:
                     root=saveroot
-                    prochazej(root[all.index(child[0].text):])
+                    prochazej(root[int(all.index(child[0].text)):])
 
         elif opcode=="JUMPIFEQ" or opcode=="JUMPIFNEQ":
             CheckPocetArgumentuInstukce(child,3)
             if (child[0].attrib['type'] != "label"):
                 exit(53)
-            hodnota1=VarTypeCheckReturn(child[1],child[1].attrib['type'])
-            hodnota2=VarTypeCheckReturn(child[2],child[1].attrib['type'])
-            if ((opcode=="JUMPIFEQ" and hodnota1==hodnota2) or (opcode=="JUMPIFNEQ" and hodnota1!=hodnota2)):
+            if (child[1].attrib['type']=="var"): #zjištění jaké datové typy by se měly v porovnavani objěvit
+                index=VarCheckDefinovanaReturnIndex(child[1].text)
+                datatype=variablesValues[index][0]
+            else:
+                datatype=child[1].attrib['type']
+
+            hodnota1=VarTypeCheckReturn(child[1],datatype)
+            hodnota2=VarTypeCheckReturn(child[2],datatype)
+            isSame=False
+            if(datatype=="int"):
+                if int(hodnota1)==int(hodnota2):
+                    isSame=True
+            else:
+                if(hodnota1==hodnota2):
+                    isSame=True
+
+            if ((opcode=="JUMPIFEQ" and isSame) or (opcode=="JUMPIFNEQ" and isSame==False)):
                 try:
                     labels.index(child[0].text)
                 except:
@@ -403,7 +443,7 @@ def prochazej(root):
                 else:
                     index2=VarCheckDefinovanaReturnIndex(child[1].text)
                     vartyp=variablesValues[index2][0]
-                    if vartyp=="-":
+                    if vartyp is None:
                         variablesValues[index][1]=""
                     else:
                         variablesValues[index][1]=vartyp
@@ -619,18 +659,16 @@ def prochazej(root):
                 print("Prazdny stack") #DEBUG
                 exit(56)
             else:
-                print(pozice)
                 root=saveroot
-                prochazej(root[all.index(pozice):]) #skok na ni
+                prochazej(root[all.index(pozice)+1:]) #skok na ni
         else:
-            print("neznama instrukce")
-           
-    print("OK")
+            print("neznama instrukce") #DEBUG
+            exit(32)
+
     exit(0)
 
                  
 saveroot=root
 prochazej(root)
 
-print("OK")
 exit(0)
