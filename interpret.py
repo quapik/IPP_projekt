@@ -61,6 +61,7 @@ labels=[]
 numbers=[]
 stackValues = []
 stackVolani = []
+TF=[]
 SymbolTypeList=["int","var","nil","string","bool"]
 BylCreatframe=False
 TF=None
@@ -136,13 +137,16 @@ def VarTypeCheckReturn(child,datovytyp):
         print("Špatné typy operandů")
         exit(53)
 def VarCheckDefinovanaReturnIndex(variable):
-    try:
-        index=variables.index(variable)
-    except ValueError:  #hodnota nebyla definovana => error a pridame
-        print("promenna",variable,"nebyla definovana" ) #DEBUG
-        exit(54)
-    else:
-        return index
+    if variable[0:2]=="GF":
+        try:
+            index=variables.index(variable)
+        except ValueError:  #hodnota nebyla definovana => error a pridame
+            print("promenna",variable,"nebyla definovana" ) #DEBUG
+            exit(54)
+        else:
+            return index
+    elif variable[0:2]=="TF":
+        return [1,2]
 
             
 #-----------------------------------------------------------------------------------------------------
@@ -210,6 +214,12 @@ for child in root: #projiti vsech instrukci a ulozeni do listu all, labely do la
         all.append("instrukceBREAK")
     elif child.attrib['opcode']=="RETURN":
         all.append("instrukceRETURN")
+    elif child.attrib['opcode']=="CREATEFRAME":
+        all.append("instrukceCREATEFRAME")
+    elif child.attrib['opcode']=="POPFRAME":
+        all.append("instrukcePOPFRAME")
+    elif child.attrib['opcode']=="PUSHFRAME":
+        all.append("instrukcePUSHFRAME")
     else:
         try: 
             all.append(child[0].text)
@@ -226,42 +236,73 @@ for child in root: #projiti vsech instrukci a ulozeni do listu all, labely do la
     if(int(child.attrib['order'])<1):
         exit(32)
     numbers.append(child.attrib['order'])
+def stringreplace(text): #funkce na nahrazeni escape sekvenci pro string - vyhledani sekvece, vyjmuti cisla a nahrazeni 
+    rg=re.compile(r"(\\\d{3})") 
+    for i in re.findall(rg,text):
+        code=i[1:4]
+        nahrada=chr(int(code))
+        text=text.replace(i,nahrada)
+    return text
 
 def prochazej(root):
     for child in root:
         opcode=(child.attrib['opcode'])
-        opcode = opcode.upper()
+        opcode=opcode.upper()
         if (opcode=="WRITE"):
             CheckPocetArgumentuInstukce(child,1)
             if child[0].attrib['type'] == "var":
-                index=VarCheckDefinovanaReturnIndex(child[0].text)
-                if variablesValues[index][0]=="nil":
-                    print("",end='')
-                else:
-                    print(variablesValues[index][1],end='')#Samotný výpis WRITU == NEMAZAT! 
+                
+                if(child[0].text[0:2]=="GF"):
+                    index=VarCheckDefinovanaReturnIndex(child[0].text)
+                    if variablesValues[index][0]=="nil":
+                        print("",end='')
+                    elif variablesValues[index][0]=="string":
+                        text=stringreplace(variablesValues[index][1])
+                        print(text,end='')#Samotný výpis WRITU == NEMAZAT! 
+                    else:
+                        print(variablesValues[index][1],end='')#Samotný výpis WRITU == NEMAZAT! 
+                elif(child[0].text[0:2]=="TF"):
+                        print(TF_value,end='')
             else:
                 if child[0].attrib['type']=="nil":
                     print("",end='')
+                if child[0].attrib['type']=="nil":
+                    text=stringreplace(variablesValues[index][1])
+                    print(text,end='')#Samotný výpis WRITU == NEMAZAT! 
                 else:
                     print(child[0].text,end='') #Samotný výpis WRITU == NEMAZAT!
         elif (opcode=="DEFVAR"):
             CheckPocetArgumentuInstukce(child,1)
-            try:
-                variables.index(child[0].text)
-            except:  #hodnota nebyla definovana => error a pridame
-                variables.append(child[0].text)
-                variablesValues.append([None,None])
+            if child[0].text[0:2]=="TF":
+                if BylCreatframe==False:
+                    exit(55) #defvar pro nedefinovany TF
+                TF_name=child[0].text
             else:
-                print("Definice proměnne podruhé!")#DEBUG
-                exit(52)
+                try:
+                    variables.index(child[0].text)
+                except:  #hodnota nebyla definovana => error a pridame
+                    variables.append(child[0].text)
+                    variablesValues.append([None,None])
+                else:
+                    print("Definice proměnne podruhé!")#DEBUG
+                    exit(52)
         elif (opcode=="MOVE"):
             CheckPocetArgumentuInstukce(child,2)
             if child[0].attrib['type']!="var":
                 print("MOVE arg1 neni VAR") #DEBUG
                 exit(52)
-            index=VarCheckDefinovanaReturnIndex(child[0].text)
-            variablesValues[index][0] = child[1].attrib['type']
-            variablesValues[index][1] = child[1].text
+            if child[0].text[0:2]=="GF":
+                index=VarCheckDefinovanaReturnIndex(child[0].text) 
+                if  child[1].attrib['type']=="var":
+                    index2=VarCheckDefinovanaReturnIndex(child[1].text)
+                    variablesValues[index][0] = variablesValues[index2][0]
+                    variablesValues[index][1] = variablesValues[index2][1]
+                else:
+                    variablesValues[index][0] = child[1].attrib['type']
+                    variablesValues[index][1] = child[1].text
+            elif child[0].text[0:2]=="TF": #TODO VAR TO VAR
+                TF_type=child[1].attrib['type']
+                TF_value=child[1].text
         elif opcode=="READ":
             CheckPocetArgumentuInstukce(child,2)
             if child[0].attrib['type']!="var" or child[1].attrib['type']!="type":
@@ -280,7 +321,7 @@ def prochazej(root):
                     variablesValues[index][0]="int"
                     variablesValues[index][1]=hodnota
             elif datovytyp=="string":
-                if isinstance(hodnota, str):
+                if isinstance(hodnota, str) and hodnota != "":
                     variablesValues[index][0]="string"
                     variablesValues[index][1]=hodnota
                 else:
@@ -297,13 +338,12 @@ def prochazej(root):
 
         elif (opcode=="CREATEFRAME"):
             BylCreatframe=True
-            TF=None
+            TF_name=None
         elif (opcode=="PUSHFRAME"):
             if BylCreatframe == False:
                 print("Pokus o přístup k nedefinovanému rámci") #DEBUG
                 exit(55)
-            LF=TF
-            LFStack.append(TF)
+            #LFStack.append(TF)
             BylCreatframe=False
         elif (opcode=="POPFRAME"):
             try:
@@ -663,8 +703,8 @@ def prochazej(root):
                 prochazej(root[all.index(pozice)+1:]) #skok na ni
         else:
             print("neznama instrukce") #DEBUG
+            print(opcode)
             exit(32)
-
     exit(0)
 
                  
