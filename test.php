@@ -17,7 +17,9 @@ function ProchazeniSlozky($directorypath)
             {
                 if(is_dir($directorypath . "/" . $filecheck))
                 {
+                    echo("<tr style=\"background-color:#ccccff \">".PHP_EOL."<td>".'SLOŽKA '.$filecheck."</td>".PHP_EOL."<td></td>".PHP_EOL."<td></td>".PHP_EOL."<td></td>".PHP_EOL."<td></td>".PHP_EOL."</tr>".PHP_EOL);
                     ProchazeniSlozky(($directorypath . "/" . $filecheck));
+
                 }
             }
             
@@ -121,11 +123,11 @@ function ProchazeniSlozky($directorypath)
                             if ($retval==$rc)
                             {
                                 $GLOBALS["CelkemTestuSpravne"]++;
-                                echo("<tr>".PHP_EOL."<td>".$directorypath.'/'.$onlyfilename."</td>".PHP_EOL."<td>".$rc."</td>".PHP_EOL."<td>".$retval."</td>".PHP_EOL."<td>YES</td>".PHP_EOL."<td style=\"color:green\">OK</td>".PHP_EOL."</tr>".PHP_EOL);
+                                echo("<tr>".PHP_EOL."<td>".$directorypath.'/'.$onlyfilename."</td>".PHP_EOL."<td>".$rc."</td>".PHP_EOL."<td>".$retval."</td>".PHP_EOL."<td>YES</td>".PHP_EOL."<td style=\"color:green\">OK(P)</td>".PHP_EOL."</tr>".PHP_EOL);
                             }
                             else
                             {
-                                echo("<tr>".PHP_EOL."<td>".$directorypath.'/'.$onlyfilename."</td>".PHP_EOL."<td>".$rc."</td>".PHP_EOL."<td>".$retval."</td>".PHP_EOL."<td>NO</td>".PHP_EOL."<td style=\"color:red\">NOT OK</td>".PHP_EOL."</tr>".PHP_EOL);
+                                echo("<tr>".PHP_EOL."<td>".$directorypath.'/'.$onlyfilename."</td>".PHP_EOL."<td>".$rc."</td>".PHP_EOL."<td>".$retval."</td>".PHP_EOL."<td>NO</td>".PHP_EOL."<td style=\"color:red\">NOT OK(P)</td>".PHP_EOL."</tr>".PHP_EOL);
                             }
                             exec('rm parseout');
                         }
