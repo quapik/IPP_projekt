@@ -2,9 +2,21 @@
 import sys
 import xml.etree.ElementTree as ET
 import re
-
 BylSource=False
 BylInput=False
+TFnames=[]
+TFValues=[]
+variables=[]
+variablesValues=[]
+LFStackValues=[]
+LFStackNames=[]
+all=[]
+labels=[]
+numbers=[]
+stackValues = []
+stackVolani = []
+SymbolTypeList=["int","var","nil","string","bool"]
+BylCreatframe=False
 
 if (len(sys.argv)>3) or len(sys.argv)==1 :
     print("Špatný počet argumentů")
@@ -28,7 +40,7 @@ else:
         BylSource=True
 
     elif(sys.argv[1][0:8]=="--input="):
-        inputname=sys.argv[1][8:len(sys.argv[1])]
+        inputfile=sys.argv[1][8:len(sys.argv[1])]
         BylInput=True
     else:
         print("errror - spatny argument")
@@ -43,7 +55,7 @@ else:
     elif(sys.argv[2][0:8]=="--input="):
         if(BylInput is True):
             exit(10) #chech exit
-        inputname=sys.argv[2][8:len(sys.argv[2])]
+        inputfile=sys.argv[2][8:len(sys.argv[2])]
         BylInput=True
     else:
         print("errror - spatny argument") #DEBUG
@@ -52,26 +64,14 @@ else:
     if BylInput is False and BylSource is False:
         print("nebyl zadan ani input ani source") #DEBUG
         exit(10)
-#------------------------------------------------------------------------------------------------------------------------------
-variables=[]
-variablesValues=[]
-LFStack=[]
-all=[]
-labels=[]
-numbers=[]
-stackValues = []
-stackVolani = []
-TF=[]
-SymbolTypeList=["int","var","nil","string","bool"]
-BylCreatframe=False
-TF=None
+#------------------------------------------------------------------------------------------------------------------------------¨
 def CheckTypes(argtype,data):
     if argtype=="int":
         if not (re.search('^[-+]?[0-9]+$',data)):
             print("Chyba - type int, ale text not int")#DEBUG
             exit(32)
     elif argtype=="string":
-        if not(re.search(r'\S+',data)): #TODO!
+        if not(re.search(r'\S*',data)): #TODO!
             exit(32)
     elif argtype=="bool":
         if not (re.search('(true|false)$',data)):
@@ -125,18 +125,19 @@ def VarTypeCheckReturn(child,datovytyp):
         try:
             index=variables.index(child.text)
         except ValueError:  #hodnota nebyla definovana => error a pridame
-            print("promenna",child.text,"nebyla definovana" ) #DEBUG
-            exit(55)
+            print("promenna",child.text,"nebyla definovanaTADYKURVA" ) #DEBUG
+            exit(54)
         else:
             if variablesValues[index][0] == datovytyp:
                 return variablesValues[index][1]
             else:
                 print("Chybas")
-                exit(53)
+                exit(56)
     else:
         print("Špatné typy operandů")
         exit(53)
 def VarCheckDefinovanaReturnIndex(variable):
+    #global BylCreatframe
     if variable[0:2]=="GF":
         try:
             index=variables.index(variable)
@@ -144,98 +145,37 @@ def VarCheckDefinovanaReturnIndex(variable):
             print("promenna",variable,"nebyla definovana" ) #DEBUG
             exit(54)
         else:
-            return index
+            return int(index)
     elif variable[0:2]=="TF":
-        return [1,2]
-
-            
-#-----------------------------------------------------------------------------------------------------
-try:
-    if(BylInput==True): #pokud je input file jako parametr, jinak stdin
-        inputfile = open(inputname, 'r')
-    else:
-        inputfile=sys.stdin
-except:
-    print("Nejde otevrit vstupni soubor") #DEBUG
-    exit(32)
-
-try:
-    if(BylSource==True):  #pokud je source file jako parametr, jinak stdin
-        tree = ET.parse(sourcefile)
-    else:
-        tree = ET.parse(sys.stdin)
-except:
-    exit(31) #pokud je nějaka chyba v načitanem xml souboru
-root = tree.getroot()
-
-for child in root: 
-    if child.tag != "instruction": #kontrola spravneho childtagu
-        exit(32)
-    try:
-        child.attrib['opcode'] #kontrola zda jsou obsaženy atributy
-        child.attrib['order']
-    except:
-        exit(32) 
-    try:
-        int(child.get('order')) #kontrola že je order číslo
-    except ValueError:
-        exit(32)
-    root[:] = sorted(root, key=lambda child: int(child.get('order'))) #seřadit child podle čísla orderu
-    for arg in child:
-        child[:] = sorted(child, key=lambda arg: str(arg.tag)) #seřadit arg podle abecedy
-
-#Kontrola xml elemetů apod v rootu
-try:
-    language = root.attrib['language'] #kontrola zda je atribut language a nasledne že je Ippcode
-except:
-    exit(32)
-
-if root.tag != "program":
-    exit(32)
-
-if (language !='IPPcode21'):
-    print("Chybna hlavička\n") #DEBUG
-    exit(32)
-
-for child in root: #projiti vsech instrukci a ulozeni do listu all, labely do labels a cisla instrukci do numbers
-
-    if(child.attrib['opcode']=="LABEL"): #pokud label, kontrola zda už nebyl a pak ulozeni do labelu
-        try:
-            labels.index(child[0].text)
-        except:
-            pass
+        if BylCreatframe==True:     
+            try:
+                index=TFnames.index(variable[3:len(variable)])
+            except:
+                print("error TF VARCHECK")
+                exit(54)
+            else:
+                return list(["TF",TFValues[index][0],TFValues[index][1]])
         else:
-            print("Label podruhe") #DEBUG
-            exit(52)
-        labels.append(child[0].text)
-    if(child.attrib['opcode']=="JUMP" or child.attrib['opcode']=="JUMPIFEQ" or child.attrib['opcode']== "JUMPIFNEQ"  or child.attrib['opcode']== "CALL"):
-        all.append("jump_"+child[0].text)
-    elif child.attrib['opcode']=="BREAK":
-        all.append("instrukceBREAK")
-    elif child.attrib['opcode']=="RETURN":
-        all.append("instrukceRETURN")
-    elif child.attrib['opcode']=="CREATEFRAME":
-        all.append("instrukceCREATEFRAME")
-    elif child.attrib['opcode']=="POPFRAME":
-        all.append("instrukcePOPFRAME")
-    elif child.attrib['opcode']=="PUSHFRAME":
-        all.append("instrukcePUSHFRAME")
+            exit(55)
     else:
-        try: 
-            all.append(child[0].text)
-        except:
-            exit(32)
-    
-    try: #pokud se podari najit chyba, už jeden label byl
-        numbers.index(child.attrib['order'])
-    except:
-        pass
-    else:
-        print("Opakuje se stejne instruction order") # DEBUG
-        exit(32)
-    if(int(child.attrib['order'])<1):
-        exit(32)
-    numbers.append(child.attrib['order'])
+        try:
+            names_tmp=LFStackNames.pop()
+            values_tmp=LFStackValues.pop()
+        except IndexError:
+            print("Chyba POPFRAME-prazdny zasobnik")
+            exit(55)
+        else:
+            try:
+                index=names_tmp.index(variable[3:len(variable)])
+            except:
+                exit(54)
+            else:
+                LFStackNames.append(list(names_tmp))
+                LFStackValues.append(list(values_tmp))
+                return list(["LF", values_tmp[index][0], values_tmp[index][1]])
+               
+
+
 def stringreplace(text): #funkce na nahrazeni escape sekvenci pro string - vyhledani sekvece, vyjmuti cisla a nahrazeni 
     rg=re.compile(r"(\\\d{3})") 
     for i in re.findall(rg,text):
@@ -245,15 +185,21 @@ def stringreplace(text): #funkce na nahrazeni escape sekvenci pro string - vyhle
     return text
 
 def prochazej(root):
+    global BylCreatframe
+    global TFnames
+    global TFValues
+    global LFStackNames
+    global LFStackValues
     for child in root:
         opcode=(child.attrib['opcode'])
         opcode=opcode.upper()
         if (opcode=="WRITE"):
             CheckPocetArgumentuInstukce(child,1)
-            if child[0].attrib['type'] == "var":
-                
-                if(child[0].text[0:2]=="GF"):
-                    index=VarCheckDefinovanaReturnIndex(child[0].text)
+            if child[0].attrib['type'] == "var": 
+                index=VarCheckDefinovanaReturnIndex(child[0].text)
+                if isinstance(index,int):
+                    if (variablesValues[index][0] is None):
+                        exit(56)
                     if variablesValues[index][0]=="nil":
                         print("",end='')
                     elif variablesValues[index][0]=="string":
@@ -261,13 +207,22 @@ def prochazej(root):
                         print(text,end='')#Samotný výpis WRITU == NEMAZAT! 
                     else:
                         print(variablesValues[index][1],end='')#Samotný výpis WRITU == NEMAZAT! 
-                elif(child[0].text[0:2]=="TF"):
-                        print(TF_value,end='')
+                else:
+                    #print(child[0].text)
+                    if (index[1] is None):
+                        exit(56)
+                    if index[1]=="nil":
+                        print("",end='')
+                    elif index[1]=="string":
+                        text=stringreplace(index[2])
+                        print(text,end='')
+                    else:
+                        print(index[2],end='')
             else:
                 if child[0].attrib['type']=="nil":
                     print("",end='')
-                if child[0].attrib['type']=="nil":
-                    text=stringreplace(variablesValues[index][1])
+                elif child[0].attrib['type']=="string":
+                    text=stringreplace(child[0].text)
                     print(text,end='')#Samotný výpis WRITU == NEMAZAT! 
                 else:
                     print(child[0].text,end='') #Samotný výpis WRITU == NEMAZAT!
@@ -276,7 +231,31 @@ def prochazej(root):
             if child[0].text[0:2]=="TF":
                 if BylCreatframe==False:
                     exit(55) #defvar pro nedefinovany TF
-                TF_name=child[0].text
+                try:
+                    TFnames.index(child[0].text[3:len(child[0].text)])
+                except:
+                    TFnames.append(child[0].text[3:len(child[0].text)])
+                    TFValues.append([None,None])
+                else:
+                    exit(52) #redefinice TF variable
+            elif child[0].text[0:2]=="LF":
+                try:
+                    names_tmp=LFStackNames.pop()
+                    values_tmp=LFStackValues.pop()
+                except IndexError:
+                    print("Chyba POPFRAME-prazdny zasobnik")
+                    exit(55)
+                else:
+                    try:
+                        names_tmp.index(child[0].text[3:len(child[0].text)])
+                    except:
+                        names_tmp.append(child[0].text[3:len(child[0].text)])
+                        values_tmp.append([None,None])
+                        LFStackNames.append(list(names_tmp))
+                        LFStackValues.append(list(values_tmp))
+                    else:
+                        print("LF PODRUHE")
+                        #TODO SPRAVNY EXIT         
             else:
                 try:
                     variables.index(child[0].text)
@@ -291,18 +270,68 @@ def prochazej(root):
             if child[0].attrib['type']!="var":
                 print("MOVE arg1 neni VAR") #DEBUG
                 exit(52)
-            if child[0].text[0:2]=="GF":
-                index=VarCheckDefinovanaReturnIndex(child[0].text) 
+
+            index=VarCheckDefinovanaReturnIndex(child[0].text)
+            if isinstance(index,int):
                 if  child[1].attrib['type']=="var":
                     index2=VarCheckDefinovanaReturnIndex(child[1].text)
-                    variablesValues[index][0] = variablesValues[index2][0]
-                    variablesValues[index][1] = variablesValues[index2][1]
+                    if isinstance(index2,int):
+                        if variablesValues[index2][0]==None:
+                            exit(56)
+                        variablesValues[index][0] = variablesValues[index2][0]
+                        variablesValues[index][1] = variablesValues[index2][1]
+                    else:
+                        variablesValues[index][0] = index2[1]
+                        variablesValues[index][1] = index2[2]
                 else:
                     variablesValues[index][0] = child[1].attrib['type']
                     variablesValues[index][1] = child[1].text
-            elif child[0].text[0:2]=="TF": #TODO VAR TO VAR
-                TF_type=child[1].attrib['type']
-                TF_value=child[1].text
+            else: #vkládáme do LF nebo TF
+                if  child[1].attrib['type']=="var":
+                    index2=VarCheckDefinovanaReturnIndex(child[1].text)
+                    if index[0]=="TF":
+                            if isinstance(index2,int):
+                                TFValues[TFnames.index((child[0].text[3:len(child[0].text)]))]=[variablesValues[index2][0],variablesValues[index2][1]]
+                            else:
+                                TFValues[TFnames.index((child[0].text[3:len(child[0].text)]))]=[index2[1],index[2]]
+                        
+                    else:
+                        try:
+                            names_tmp=LFStackNames.pop()
+                            values_tmp=LFStackValues.pop()
+                        except IndexError:
+                            print("Chyba POPFRAME-prazdny zasobnik")
+                            exit(55)
+
+                        try:
+                            indexLF=names_tmp.index(child[0].text[3:len(child[0].text)])
+                        except IndexError:
+                            exit(54)
+
+                        if isinstance(index2,int):
+                           values_tmp[indexLF]=[variablesValues[index2][0],variablesValues[index2][1]]
+                        else:
+                            values_tmp[indexLF]==[index2[1],index[2]]
+                        LFStackNames.append(names_tmp)
+                        LFStackValues.append(values_tmp)
+
+                else: #pokud je vkladana konstatnta
+                    if index[0]=="TF":
+                        TFValues[TFnames.index((child[0].text[3:len(child[0].text)]))]=[child[1].attrib['type'],child[1].text]
+                    else:
+                        try:
+                            names_tmp=LFStackNames.pop()
+                            values_tmp=LFStackValues.pop()
+                        except IndexError:
+                            print("Chyba POPFRAME-prazdny zasobnik")
+                            exit(55)
+                        try:
+                            indexLF=names_tmp.index(child[0].text[3:len(child[0].text)])
+                        except IndexError:
+                            exit(54)
+                        values_tmp[indexLF]=[child[1].attrib['type'],child[1].text]
+                        LFStackNames.append(names_tmp)
+                        LFStackValues.append(values_tmp)
         elif opcode=="READ":
             CheckPocetArgumentuInstukce(child,2)
             if child[0].attrib['type']!="var" or child[1].attrib['type']!="type":
@@ -338,20 +367,26 @@ def prochazej(root):
 
         elif (opcode=="CREATEFRAME"):
             BylCreatframe=True
-            TF_name=None
+            TFnames.clear()
+            TFValues.clear()
+
         elif (opcode=="PUSHFRAME"):
             if BylCreatframe == False:
                 print("Pokus o přístup k nedefinovanému rámci") #DEBUG
                 exit(55)
-            #LFStack.append(TF)
+            LFStackNames.append(list(TFnames))
+            LFStackValues.append(list(TFValues))
+            TFnames.clear()
+            TFValues.clear()
             BylCreatframe=False
         elif (opcode=="POPFRAME"):
             try:
-                TF=LFStack.pop()
+                TFnames=LFStackNames.pop()
+                TFValues=LFStackValues.pop()
             except IndexError:
                 print("Chyba POPFRAME-prazdny zasobnik")
                 exit(55)
-            BylCreatframe=True #TODO toto udelat spravně
+            BylCreatframe=True
         elif (opcode=="ADD" or opcode=="SUB" or opcode=="MUL" or opcode=="IDIV"):
             CheckPocetArgumentuInstukce(child,3)
             if child[0].attrib['type'] == "var":
@@ -360,7 +395,7 @@ def prochazej(root):
                 try:
                     cislo1=int(VarTypeCheckReturn(child[1],"int"))
                     cislo2=int(VarTypeCheckReturn(child[2],"int"))         
-                except:
+                except ValueError:
                     exit(53)      
             if opcode=="ADD": #todo for variables
                 variablesValues[index][1] = cislo1 + cislo2
@@ -419,7 +454,11 @@ def prochazej(root):
                 
         elif opcode=="STRLEN":
             CheckPocetArgumentuInstukce(child,2)
-            str1=VarTypeCheckReturn(child[1],"string")
+            try:
+                str1=VarTypeCheckReturn(child[1],"string")
+            except:
+                exit(53)
+            
             if (child[0].attrib['type'] == "var"):
                 index=VarCheckDefinovanaReturnIndex(child[0].text)
                 variablesValues[index][0]="int"
@@ -458,12 +497,11 @@ def prochazej(root):
         elif opcode=="SETCHAR":
             CheckPocetArgumentuInstukce(child,3)
             pozice=VarTypeCheckReturn(child[1],"int")
-            str1=VarTypeCheckReturn(child[2],"string")   
+            str1=VarTypeCheckReturn(child[2],"string")
             if (child[0].attrib['type'] == "var"):
                 index=VarCheckDefinovanaReturnIndex(child[0].text)
                 if(variablesValues[index][0]!="string"):
                     exit(53) #TODO CHECK!
-                print(int(pozice),len(variablesValues[index][1]))
                 if int(pozice)>(len(variablesValues[index][1])-1):
                      exit(58)
                 try:
@@ -485,8 +523,10 @@ def prochazej(root):
                     vartyp=variablesValues[index2][0]
                     if vartyp is None:
                         variablesValues[index][1]=""
+                        variablesValues[index][0]="string"
                     else:
                         variablesValues[index][1]=vartyp
+                        variablesValues[index][0]="string"
 
             else:
                 exit(53)
@@ -703,11 +743,103 @@ def prochazej(root):
                 prochazej(root[all.index(pozice)+1:]) #skok na ni
         else:
             print("neznama instrukce") #DEBUG
-            print(opcode)
             exit(32)
     exit(0)
 
-                 
+       
+#-----------------------------------------------------------------------------------------------------
+try:
+    if(BylInput==True): #pokud je input file jako parametr, jinak stdin
+        inputfile = open(inputfile, 'r')
+    else:
+        inputfile=sys.stdin
+except:
+    print("Nejde otevrit vstupni soubors") #DEBUG
+    exit(32)
+
+try:
+    if(BylSource==True):  #pokud je source file jako parametr, jinak stdin
+        tree = ET.parse(sourcefile)
+    else:
+        tree = ET.parse(sys.stdin)
+except:
+    exit(31) #pokud je nějaka chyba v načitanem xml souboru
+root = tree.getroot()
+
+for child in root: 
+    if child.tag != "instruction": #kontrola spravneho childtagu
+        exit(32)
+    try:
+        child.attrib['opcode'] #kontrola zda jsou obsaženy atributy
+        child.attrib['order']
+    except:
+        exit(32) 
+    try:
+        int(child.get('order')) #kontrola že je order číslo
+    except ValueError:
+        exit(32)
+    try:
+        root[:] = sorted(root, key=lambda child: int(child.get('order'))) #seřadit child podle čísla orderu
+        for arg in child:
+            child[:] = sorted(child, key=lambda arg: str(arg.tag)) #seřadit arg podle abecedy
+    except:
+        exit(32)
+
+#Kontrola xml elemetů apod v rootu
+try:
+    language = root.attrib['language'] #kontrola zda je atribut language a nasledne že je Ippcode
+except:
+    exit(32)
+
+if root.tag != "program":
+    exit(32)
+
+if (language !='IPPcode21'):
+    print("Chybna hlavička\n") #DEBUG
+    exit(32)
+
+for child in root: #projiti vsech instrukci a ulozeni do listu all, labely do labels a cisla instrukci do numbers
+    opcode=child.attrib['opcode']
+    opcode=opcode.upper()
+    if(opcode=="LABEL"): #pokud label, kontrola zda už nebyl a pak ulozeni do labelu
+        try:
+            labels.index(child[0].text)
+        except:
+            pass
+        else:
+            print("Label podruhe") #DEBUG
+            exit(52)
+        labels.append(child[0].text)
+      
+    if(opcode=="JUMP" or opcode=="JUMPIFEQ" or opcode== "JUMPIFNEQ"  or opcode== "CALL"):
+        all.append("jump_"+child[0].text)
+    elif opcode=="BREAK":
+        all.append("instrukceBREAK")
+    elif opcode=="RETURN":
+        all.append("instrukceRETURN")
+    elif opcode=="CREATEFRAME":
+        all.append("instrukceCREATEFRAME")
+    elif opcode=="POPFRAME":
+        all.append("instrukcePOPFRAME")
+    elif opcode=="PUSHFRAME":
+        all.append("instrukcePUSHFRAME")
+    else:
+        try: 
+            all.append(child[0].text)
+        except:
+            exit(32)
+    
+    try: #pokud se podari najit chyba, už jeden label byl
+        numbers.index(child.attrib['order'])
+    except:
+        pass
+    else:
+        print("Opakuje se stejne instruction order") # DEBUG
+        exit(32)
+    if(int(child.attrib['order'])<1):
+        exit(32)
+    numbers.append(child.attrib['order'])
+            
 saveroot=root
 prochazej(root)
 
