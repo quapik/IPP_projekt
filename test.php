@@ -17,7 +17,7 @@ function ProchazeniSlozky($directorypath)
             {
                 if(is_dir($directorypath . "/" . $filecheck))
                 {
-                    echo("<tr style=\"background-color:#ccccff \">".PHP_EOL."<td colspan=\"5\">".'SLOŽKA '.$filecheck."</td>".PHP_EOL."</tr>".PHP_EOL);
+                    $GLOBALS["T1"]=$GLOBALS["T1"]."<tr style=\"background-color:#190061 \">".PHP_EOL."<td colspan=\"5\">".'SLOŽKA '.$filecheck."</td>".PHP_EOL."</tr>".PHP_EOL;
                     ProchazeniSlozky(($directorypath . "/" . $filecheck));
 
                 }
@@ -47,17 +47,17 @@ function ProchazeniSlozky($directorypath)
                             if(filesize("diffinterpret")==0) #pokud v diffsouboru nic neni zapsano tak jsou stejne outputy
                             {
                                 $GLOBALS["CelkemTestuSpravne"]++;
-                                echo("<tr>".PHP_EOL."<td>".$directorypath.'/'.$onlyfilename."</td>".PHP_EOL."<td>".$rc."</td>".PHP_EOL."<td>".$retval."</td>".PHP_EOL."<td>YES</td>".PHP_EOL."<td style=\"color:green\">OK</td>".PHP_EOL."</tr>".PHP_EOL);
+                                $GLOBALS["T1"]=$GLOBALS["T1"]."<tr>".PHP_EOL."<td>".$onlyfilename."</td>".PHP_EOL."<td>".$rc."</td>".PHP_EOL."<td>".$retval."</td>".PHP_EOL."<td>ANO</td>".PHP_EOL."<td style=\"color:green\">OK</td>".PHP_EOL."</tr>".PHP_EOL;
                             }
                             else
                             {
-                                echo("<tr>".PHP_EOL."<td>".$directorypath.'/'.$onlyfilename."</td>".PHP_EOL."<td>".$rc."</td>".PHP_EOL."<td>".$retval."</td>".PHP_EOL."<td>NO</td>".PHP_EOL."<td style=\"color:red\">NOT OK</td>".PHP_EOL."</tr>".PHP_EOL);
+                                $GLOBALS["T1"]=$GLOBALS["T1"]."<tr>".PHP_EOL."<td>".$onlyfilename."</td>".PHP_EOL."<td>".$rc."</td>".PHP_EOL."<td>".$retval."</td>".PHP_EOL."<td>NE</td>".PHP_EOL."<td style=\"color:red\">CHYBA</td>".PHP_EOL."</tr>".PHP_EOL;
                             }
                         }
                         else
                         {
                             $GLOBALS["CelkemTestuSpravne"]++;
-                            echo("<tr>".PHP_EOL."<td>".$directorypath.'/'.$onlyfilename."</td>".PHP_EOL."<td>".$rc."</td>".PHP_EOL."<td>".$retval."</td>".PHP_EOL."<td>---</td>".PHP_EOL."<td style=\"color:green\">OK</td>".PHP_EOL."</tr>".PHP_EOL);
+                            $GLOBALS["T1"]=$GLOBALS["T1"]."<tr>".PHP_EOL."<td>".$onlyfilename."</td>".PHP_EOL."<td>".$rc."</td>".PHP_EOL."<td>".$retval."</td>".PHP_EOL."<td>---</td>".PHP_EOL."<td style=\"color:green\">OK</td>".PHP_EOL."</tr>".PHP_EOL;
                         }
                         
                         #odstraneni vytvorenych souboru
@@ -66,7 +66,7 @@ function ProchazeniSlozky($directorypath)
                     }
                     else
                     {
-                        echo("<tr>".PHP_EOL."<td>".$directorypath.'/'.$onlyfilename."</td>".PHP_EOL."<td>".$rc."</td>".PHP_EOL."<td>".$retval."</td>".PHP_EOL."<td> </td>".PHP_EOL."<td style=\"color:red\">NOT OK</td>".PHP_EOL."</tr>".PHP_EOL);
+                        $GLOBALS["T1"]=$GLOBALS["T1"]."<tr>".PHP_EOL."<td>".$onlyfilename."</td>".PHP_EOL."<td>".$rc."</td>".PHP_EOL."<td>".$retval."</td>".PHP_EOL."<td> </td>".PHP_EOL."<td style=\"color:red\">CHYBA</td>".PHP_EOL."</tr>".PHP_EOL;
                     }
                     }
                     else if($GLOBALS["ParseOnly"]==True) 
@@ -87,11 +87,11 @@ function ProchazeniSlozky($directorypath)
                                 if ($lines[2] == "Two files are identical\n")
                                 {
                                     $GLOBALS["CelkemTestuSpravne"]++;
-                                    echo("<tr>".PHP_EOL."<td>".$directorypath.'/'.$onlyfilename."</td>".PHP_EOL."<td>".$rc."</td>".PHP_EOL."<td>".$retval."</td>".PHP_EOL."<td>YES</td>".PHP_EOL."<td style=\"color:green\">OK</td>".PHP_EOL."</tr>".PHP_EOL);                       
+                                    $GLOBALS["T1"]=$GLOBALS["T1"]."<tr>".PHP_EOL."<td>".$onlyfilename."</td>".PHP_EOL."<td>".$rc."</td>".PHP_EOL."<td>".$retval."</td>".PHP_EOL."<td>ANO</td>".PHP_EOL."<td style=\"color:green\">OK</td>".PHP_EOL."</tr>".PHP_EOL;                       
                                 }
                                 else
                                 {
-                                    echo("<tr>".PHP_EOL."<td>".$directorypath.'/'.$onlyfilename."</td>".PHP_EOL."<td>".$rc."</td>".PHP_EOL."<td>".$retval."</td>".PHP_EOL."<td>NO</td>".PHP_EOL."<td style=\"color:red\">NOT OK</td>".PHP_EOL."</tr>".PHP_EOL);
+                                    $GLOBALS["T1"]=$GLOBALS["T1"]."<tr>".PHP_EOL."<td>".$directorypath.'/'.$onlyfilename."</td>".PHP_EOL."<td>".$rc."</td>".PHP_EOL."<td>".$retval."</td>".PHP_EOL."<td>NE</td>".PHP_EOL."<td style=\"color:red\">CHYBA</td>".PHP_EOL."</tr>".PHP_EOL;
                                 }
                                 exec('rm diff');
                                 exec('rm delta.xml');
@@ -99,13 +99,13 @@ function ProchazeniSlozky($directorypath)
                             else
                             {
                                 $GLOBALS["CelkemTestuSpravne"]++;
-                                echo("<tr>".PHP_EOL."<td>".$directorypath.'/'.$onlyfilename."</td>".PHP_EOL."<td>".$rc."</td>".PHP_EOL."<td>".$retval."</td>".PHP_EOL."<td>---</td>".PHP_EOL."<td style=\"color:green\">OK</td>".PHP_EOL."</tr>".PHP_EOL);
+                                $GLOBALS["T1"]=$GLOBALS["T1"]."<tr>".PHP_EOL."<td>".$onlyfilename."</td>".PHP_EOL."<td>".$rc."</td>".PHP_EOL."<td>".$retval."</td>".PHP_EOL."<td>---</td>".PHP_EOL."<td style=\"color:green\">OK</td>".PHP_EOL."</tr>".PHP_EOL;
                             }
                         
                         }
                         else
                         {
-                            echo("<tr>".PHP_EOL."<td>".$directorypath.'/'.$onlyfilename."</td>".PHP_EOL."<td>".$rc."</td>".PHP_EOL."<td>".$retval."</td>".PHP_EOL."<td> </td>".PHP_EOL."<td style=\"color:red\">NOT OK</td>".PHP_EOL."</tr>".PHP_EOL);
+                            $GLOBALS["T1"]=$GLOBALS["T1"]."<tr>".PHP_EOL."<td>".$onlyfilename."</td>".PHP_EOL."<td>".$rc."</td>".PHP_EOL."<td>".$retval."</td>".PHP_EOL."<td> </td>".PHP_EOL."<td style=\"color:red\">CHYBA</td>".PHP_EOL."</tr>".PHP_EOL;
                         }
                         exec('rm parseout');
                         
@@ -123,11 +123,11 @@ function ProchazeniSlozky($directorypath)
                             if ($retval==$rc)
                             {
                                 $GLOBALS["CelkemTestuSpravne"]++;
-                                echo("<tr>".PHP_EOL."<td>".$directorypath.'/'.$onlyfilename."</td>".PHP_EOL."<td>".$rc."</td>".PHP_EOL."<td>".$retval."</td>".PHP_EOL."<td>YES</td>".PHP_EOL."<td style=\"color:green\">OK(P)</td>".PHP_EOL."</tr>".PHP_EOL);
+                                $GLOBALS["T1"]=$GLOBALS["T1"]."<tr>".PHP_EOL."<td>".$onlyfilename."</td>".PHP_EOL."<td>".$rc."</td>".PHP_EOL."<td>".$retval."</td>".PHP_EOL."<td>ANO</td>".PHP_EOL."<td style=\"color:green\">OK(P)</td>".PHP_EOL."</tr>".PHP_EOL;
                             }
                             else
                             {
-                                echo("<tr>".PHP_EOL."<td>".$directorypath.'/'.$onlyfilename."</td>".PHP_EOL."<td>".$rc."</td>".PHP_EOL."<td>".$retval."</td>".PHP_EOL."<td>NO</td>".PHP_EOL."<td style=\"color:red\">NOT OK(P)</td>".PHP_EOL."</tr>".PHP_EOL);
+                                $GLOBALS["T1"]=$GLOBALS["T1"]."<tr>".PHP_EOL."<td>".$onlyfilename."</td>".PHP_EOL."<td>".$rc."</td>".PHP_EOL."<td>".$retval."</td>".PHP_EOL."<td>NE</td>".PHP_EOL."<td style=\"color:red\">CHYBA(P)</td>".PHP_EOL."</tr>".PHP_EOL;
                             }
                             exec('rm parseout');
                         }
@@ -142,18 +142,18 @@ function ProchazeniSlozky($directorypath)
                                     if(filesize("diffinterpret")==0) #pokud v diffsouboru nic neni zapsano tak jsou stejne outputy
                                     {
                                         $GLOBALS["CelkemTestuSpravne"]++;
-                                        echo("<tr>".PHP_EOL."<td>".$directorypath.'/'.$onlyfilename."</td>".PHP_EOL."<td>".$rc."</td>".PHP_EOL."<td>".$retval."</td>".PHP_EOL."<td>YES</td>".PHP_EOL."<td style=\"color:green\">OK</td>".PHP_EOL."</tr>".PHP_EOL);
+                                        $GLOBALS["T1"]=$GLOBALS["T1"]."<tr>".PHP_EOL."<td>".$onlyfilename."</td>".PHP_EOL."<td>".$rc."</td>".PHP_EOL."<td>".$retval."</td>".PHP_EOL."<td>ANO</td>".PHP_EOL."<td style=\"color:green\">OK</td>".PHP_EOL."</tr>".PHP_EOL;
                                     }
                                     else
                                     {
-                                        echo("<tr>".PHP_EOL."<td>".$directorypath.'/'.$onlyfilename."</td>".PHP_EOL."<td>".$rc."</td>".PHP_EOL."<td>".$retval."</td>".PHP_EOL."<td>NO</td>".PHP_EOL."<td style=\"color:red\">NOT OK</td>".PHP_EOL."</tr>".PHP_EOL);
+                                        $GLOBALS["T1"]=$GLOBALS["T1"]."<tr>".PHP_EOL."<td>".$onlyfilename."</td>".PHP_EOL."<td>".$rc."</td>".PHP_EOL."<td>".$retval."</td>".PHP_EOL."<td>NE</td>".PHP_EOL."<td style=\"color:red\">CHYBA</td>".PHP_EOL."</tr>".PHP_EOL;
                                     }
                                 }
                                 else
                                 {
                                     $GLOBALS["CelkemTestuSpravne"]++;
                             
-                                    echo("<tr>".PHP_EOL."<td>".$directorypath.'/'.$onlyfilename."</td>".PHP_EOL."<td>".$rc."</td>".PHP_EOL."<td>".$retval."</td>".PHP_EOL."<td>---</td>".PHP_EOL."<td style=\"color:green\">OK</td>".PHP_EOL."</tr>".PHP_EOL);
+                                    $GLOBALS["T1"]=$GLOBALS["T1"]."<tr>".PHP_EOL."<td>".$onlyfilename."</td>".PHP_EOL."<td>".$rc."</td>".PHP_EOL."<td>".$retval."</td>".PHP_EOL."<td>---</td>".PHP_EOL."<td style=\"color:green\">OK</td>".PHP_EOL."</tr>".PHP_EOL;
                                 }
                                 
                             
@@ -161,7 +161,7 @@ function ProchazeniSlozky($directorypath)
                             }
                             else
                             {
-                                echo("<tr>".PHP_EOL."<td>".$directorypath.'/'.$onlyfilename."</td>".PHP_EOL."<td>".$rc."</td>".PHP_EOL."<td>".$retval."</td>".PHP_EOL."<td> </td>".PHP_EOL."<td style=\"color:red\">NOT OK</td>".PHP_EOL."</tr>".PHP_EOL);
+                                $GLOBALS["T1"]=$GLOBALS["T1"]."<tr>".PHP_EOL."<td>".$onlyfilename."</td>".PHP_EOL."<td>".$rc."</td>".PHP_EOL."<td>".$retval."</td>".PHP_EOL."<td> </td>".PHP_EOL."<td style=\"color:red\">CHYBA</td>".PHP_EOL."</tr>".PHP_EOL;
                             }
                         exec('rm parseout');
                         exec('rm outputinterpret');
@@ -199,33 +199,32 @@ if (!(file_exists($directorypath . "/" .  $onlyfilename."in")))
 function HTMLStart()
 {
 echo("<!doctype html>".PHP_EOL);
-echo("<html lang=\"cz\">".PHP_EOL);
+echo("<html lang=\"cz\" style=\"background-color:#000;\">".PHP_EOL);
 echo("<head>".PHP_EOL);
 echo("<title>test.php pro IPPCode21</title>".PHP_EOL);
 echo("<style> ".PHP_EOL);
-echo("table, th, td {border: 1px solid black;}".PHP_EOL);
-echo("th, td { border-bottom: 1px solid #ddd;}".PHP_EOL);
-echo("th, td{text-align: center;}".PHP_EOL);
-echo("tr:hover {background-color: #f5f5f5;}".PHP_EOL);
-echo("div>#T1 { float:left;}".PHP_EOL);
-echo("div>#T2 { float:left;}".PHP_EOL);
+echo("tr:hover {background-color: #05386B;}".PHP_EOL);
+echo("#T1 {float:left; font-family: Arial, Helvetica, sans-serif;border-collapse: collapse;border: 2px solid #000;width: 100%;}".PHP_EOL);
+echo("#T2 {float:left; font-family: Arial, Helvetica, sans-serif;border-collapse: collapse;border: 2px solid #000;width: 100%;}".PHP_EOL);
+echo("#T1 td, #T1 th {border: 1px solid #282828;padding: 8px; text-align: center; color: white;}".PHP_EOL);
+echo("#T1 th {padding-top: 12px;padding-bottom: 12px; background-color: #0c0032; color: white;text-align: center;}".PHP_EOL);
+echo("#T2 td, #T2 th {border: 1px solid #282828;padding: 8px; text-align: center; color: white;}".PHP_EOL);
+echo("#T2 th {padding-top: 12px;padding-bottom: 12px; background-color: #45a29e; color: white;text-align: center;}".PHP_EOL);
 echo("</style>".PHP_EOL);
 echo("</head>".PHP_EOL);
-echo("<body>".PHP_EOL."<div>".PHP_EOL);
-echo("<table id=\"T1\">".PHP_EOL);
-echo("<tr>".PHP_EOL."<th>Jméno testu</th>".PHP_EOL."<th>Očekáváný návratový kód</th>".PHP_EOL."<th>Návratový kód</th>".PHP_EOL."<th>OUTPUTY</th>".PHP_EOL."<th>Výsledek</th>".PHP_EOL."</tr>".PHP_EOL);
 echo("<body>".PHP_EOL);
 }
 #Funkce pro koncové tagy htmml + tabulku s celkovou úspěšností
 function HTMLEnd()
 {
-echo("</table>".PHP_EOL);
+
 echo("<table id=\"T2\">".PHP_EOL);
 $Spatne=$GLOBALS["CelkemTestu"]-$GLOBALS["CelkemTestuSpravne"];
 $Procenta=($GLOBALS["CelkemTestuSpravne"]/$GLOBALS["CelkemTestu"])*100; #procentualni uspěšnost
-echo("<tr>".PHP_EOL."<th>Počet testů</th>".PHP_EOL."<th>Správně</th>".PHP_EOL."<th>Špatně</th>".PHP_EOL."<th>Výsledekv %</th>".PHP_EOL."</tr>".PHP_EOL);
+echo("<tr>".PHP_EOL."<th>Celkový počet testů</th>".PHP_EOL."<th>Počet správných testů</th>".PHP_EOL."<th>Počet špatných testů</th>".PHP_EOL."<th>Výsledek v %</th>".PHP_EOL."</tr>".PHP_EOL);
 echo("<tr>".PHP_EOL."<td>".$GLOBALS["CelkemTestu"]."</td>".PHP_EOL."<td>".$GLOBALS["CelkemTestuSpravne"]."</td>".PHP_EOL."<td>".$Spatne."</td>".PHP_EOL."<td>".$Procenta."</td>".PHP_EOL."</tr>".PHP_EOL);
-echo("</table>".PHP_EOL."</div>".PHP_EOL);
+echo("</table>".PHP_EOL);
+echo($GLOBALS["T1"]."</table>".PHP_EOL);
 echo("</body>".PHP_EOL);
 echo("</html>".PHP_EOL);
 if (file_exists('parseout.log'))
@@ -237,6 +236,7 @@ $BylDircetory=$BylParseScript=$BylInterpretScript=$ParseOnly=$IntOnly=$Byljexamx
 $BylRecursive=false;
 $CelkemTestu=0;
 $CelkemTestuSpravne=0;
+$T1="<table id=\"T1\">".PHP_EOL."<tr>".PHP_EOL."<th>Jméno testu</th>".PHP_EOL."<th>Očekáváný návratový kód</th>".PHP_EOL."<th>Návratový kód</th>".PHP_EOL."<th>Stejné výstupy</th>".PHP_EOL."<th>Výsledek</th>".PHP_EOL."</tr>".PHP_EOL;
 if ($argv[1]=="--help")
     {
         if ($argc==2)
