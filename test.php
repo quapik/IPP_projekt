@@ -17,7 +17,7 @@ function ProchazeniSlozky($directorypath)
             {
                 if(is_dir($directorypath . "/" . $filecheck))
                 {
-                    echo("<tr style=\"background-color:#ccccff \">".PHP_EOL."<td>".'SLOŽKA '.$filecheck."</td>".PHP_EOL."<td></td>".PHP_EOL."<td></td>".PHP_EOL."<td></td>".PHP_EOL."<td></td>".PHP_EOL."</tr>".PHP_EOL);
+                    echo("<tr style=\"background-color:#ccccff \">".PHP_EOL."<td colspan=\"5\">".'SLOŽKA '.$filecheck."</td>".PHP_EOL."</tr>".PHP_EOL);
                     ProchazeniSlozky(($directorypath . "/" . $filecheck));
 
                 }
