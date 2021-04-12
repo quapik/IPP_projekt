@@ -122,17 +122,57 @@ def VarTypeCheckReturn(child,datovytyp):
     if(child.attrib['type']==datovytyp):
         return child.text
     elif(child.attrib['type']=="var"):
-        try:
-            index=variables.index(child.text)
-        except ValueError:  #hodnota nebyla definovana => error a pridame
-            print("promenna",child.text,"nebyla definovanaTADYKURVA" ) #DEBUG
-            exit(54)
-        else:
-            if variablesValues[index][0] == datovytyp:
-                return variablesValues[index][1]
+        if child.text[0:2]=="GF":
+            try:
+                index=variables.index(child.text)
+            except ValueError:  #hodnota nebyla definovana => error a pridame
+                print("promenna",child.text,"nebyla definovana" ) #DEBUG
+                exit(54)
             else:
-                print("Chybas")
-                exit(56)
+                if variablesValues[index][0] == datovytyp:
+                    return variablesValues[index][1]
+                elif variablesValues[index][0] is None:
+                    exit(56) 
+                else:
+                    print("Chyba")
+                    exit(53)
+        elif child.text[0:2]=="TF":
+            if BylCreatframe==True:     
+                try:
+                    index=TFnames.index(child.text[3:len(child.text)])
+                except:
+                    print("error TF VARCHECK")
+                    exit(54)
+                else:
+                    if TFValues[index][0]== datovytyp:
+                        return TFValues[index][1]
+                    elif TFValues[index][0] is None:
+                        exit(56) 
+                    else:
+                        exit(53)
+            else:
+                exit(55)
+        else:
+            try:
+                names_tmp=LFStackNames.pop()
+                values_tmp=LFStackValues.pop()
+            except IndexError:
+                print("Chyba POPFRAME-prazdny zasobnik")
+                exit(55)
+            else:
+                try:
+                    index=names_tmp.index(child.text[3:len(child.text)])
+                except:
+                    exit(54)
+                else:
+                    LFStackNames.append(list(names_tmp))
+                    LFStackValues.append(list(values_tmp))
+                    if values_tmp[index][0]== datovytyp:
+                        return values_tmp[index][1]
+                    elif values_tmp[index][0] is None:
+                        exit(56)
+                    else:
+                        exit(53)
     else:
         print("Špatné typy operandů")
         exit(53)
@@ -254,8 +294,8 @@ def prochazej(root):
                         LFStackNames.append(list(names_tmp))
                         LFStackValues.append(list(values_tmp))
                     else:
-                        print("LF PODRUHE")
-                        #TODO SPRAVNY EXIT         
+                        exit(52)
+                         
             else:
                 try:
                     variables.index(child[0].text)
