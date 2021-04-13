@@ -71,8 +71,9 @@ def CheckTypes(argtype,data):
             print("Chyba - type int, ale text not int")#DEBUG
             exit(32)
     elif argtype=="string":
-        if not(re.search(r'\S*',data)): #TODO!
-            exit(32)
+       # if not(re.search(r'\S*',data)): #TODO!
+        #    exit(32)
+        pass
     elif argtype=="bool":
         if not (re.search('(true|false)$',data)):
             print("Chyba - type bool") #DEBUG
@@ -213,9 +214,20 @@ def VarCheckDefinovanaReturnIndex(variable):
                 LFStackNames.append(list(names_tmp))
                 LFStackValues.append(list(values_tmp))
                 return list(["LF", values_tmp[index][0], values_tmp[index][1]])
+def AddValueLFTF(variable,datatype,hodnota):
+    if variable[0:2]=="TF":
+        TFValues[TFnames.index((variable[3:len(variable)]))]=[datatype,hodnota]
+    else:
+        names_tmp=LFStackNames.pop()
+        values_tmp=LFStackValues.pop()
+        index=names_tmp.index(variable[3:len(variable)])
+        values_tmp[index]=[datatype,hodnota]
+        LFStackNames.append(list(names_tmp))
+        LFStackValues.append(list(values_tmp))
+
+
+
                
-
-
 def stringreplace(text): #funkce na nahrazeni escape sekvenci pro string - vyhledani sekvece, vyjmuti cisla a nahrazeni 
     rg=re.compile(r"(\\\d{3})") 
     for i in re.findall(rg,text):
@@ -380,6 +392,8 @@ def prochazej(root):
             datovytyp=child[1].text #v textove casti je datovy typ co se nacita (int,bool,string)
             hodnota=inputfile.readline() #nacteni z input souboru
             hodnota = hodnota.replace('\n','')
+            if hodnota=="":
+                    chyba = True
             chyba=False
             if datovytyp=="int":
                 try:
@@ -387,23 +401,38 @@ def prochazej(root):
                 except ValueError: #pokud tam neni hodnota co nejde prevest na int => bude nil@nil
                     chyba=True
                 else:
-                    variablesValues[index][0]="int"
-                    variablesValues[index][1]=hodnota
+                    if isinstance(index,int):
+                        variablesValues[index][0]=datovytyp
+                        variablesValues[index][1]=hodnota
+                    else:
+                        AddValueLFTF(child[0].text,datovytyp,hodnota)
             elif datovytyp=="string":
                 if isinstance(hodnota, str) and hodnota != "":
-                    variablesValues[index][0]="string"
-                    variablesValues[index][1]=hodnota
+                    if isinstance(index,int):
+                        variablesValues[index][0]=datovytyp
+                        variablesValues[index][1]=hodnota
+                    else:
+                        AddValueLFTF(child[0].text,datovytyp,hodnota)
                 else:
                     chyba=True
             elif datovytyp=="bool": #true na true, vse ostatni na false
-                variablesValues[index][0]="bool"
-                if hodnota.lower() == "true":
-                    variablesValues[index][1]="true"
+                if isinstance(index,int):
+                    variablesValues[index][0]=datovytyp
+                    if hodnota.lower() == "true":
+                        variablesValues[index][1]="true"
+                    else:
+                        variablesValues[index][1]="false"
                 else:
-                    variablesValues[index][1]="false"
+                    if hodnota.lower() == "true":
+                        AddValueLFTF(child[0].text,datovytyp,"true")
+                    else:
+                        AddValueLFTF(child[0].text,datovytyp,"false")
             if (chyba is True):
-                variablesValues[index][0]="nil"
-                variablesValues[index][1]="nil"
+                if isinstance(index,int):
+                    variablesValues[index][0]="nil"
+                    variablesValues[index][1]="nil"
+                else:
+                    AddValueLFTF(child[0].text,"nil","nil")
 
         elif (opcode=="CREATEFRAME"):
             BylCreatframe=True
@@ -468,7 +497,8 @@ def prochazej(root):
                 exit(53)
             if (child[1].attrib['type']=="var"): #zjištění jaké datové typy by se měly v porovnavani objěvit
                 index=VarCheckDefinovanaReturnIndex(child[1].text)
-                datatype=variablesValues[index][0]
+                if isinstance(index,int):
+                    datatype=variablesValues[index][0]
             else:
                 datatype=child[1].attrib['type']
 
@@ -494,15 +524,24 @@ def prochazej(root):
                 
         elif opcode=="STRLEN":
             CheckPocetArgumentuInstukce(child,2)
-            try:
-                str1=VarTypeCheckReturn(child[1],"string")
-            except:
-                exit(53)
+            #try:
+            #    str1=VarTypeCheckReturn(child[1],"string")
+            #except:
+            #    exit(53)
+            
+            str1=VarTypeCheckReturn(child[1],"string")
+            if str1 is None:
+                str1=""
+
             
             if (child[0].attrib['type'] == "var"):
                 index=VarCheckDefinovanaReturnIndex(child[0].text)
-                variablesValues[index][0]="int"
-                variablesValues[index][1]=len(str1)
+                if isinstance(index,int):
+                    variablesValues[index][0]="int"
+                    variablesValues[index][1]=len(str1)
+                else:
+                    AddValueLFTF(index[0],"int",len(str1))
+
             else:
                 print("chyba STRLEN") #DEBUG
                 exit(53)
@@ -556,17 +595,36 @@ def prochazej(root):
             if (child[0].attrib['type'] == "var"):
                 index=VarCheckDefinovanaReturnIndex(child[0].text)
                 if child[1].attrib['type'] == "string" or child[1].attrib['type'] == "int" or child[1].attrib['type'] == "nil" or child[1].attrib['type'] == "bool":
-                    variablesValues[index][0]="string"
-                    variablesValues[index][1]=child[1].attrib['type']
+                    if isinstance(index,int):
+                        variablesValues[index][0]="string"
+                        variablesValues[index][1]=child[1].attrib['type']
+                    else:
+                        AddValueLFTF(child[0].text,"string",child[1].attrib['type'])
                 else:
                     index2=VarCheckDefinovanaReturnIndex(child[1].text)
-                    vartyp=variablesValues[index2][0]
-                    if vartyp is None:
-                        variablesValues[index][1]=""
-                        variablesValues[index][0]="string"
+                    if isinstance(index,int):
+                        if isinstance(index2,int):  
+                            vartyp=variablesValues[index2][0]
+                        else:
+                            vartyp=index2[1]
+
+                        if vartyp is None:
+                            variablesValues[index][1]=""
+                            variablesValues[index][0]="string"
+                        else:
+                            variablesValues[index][1]=vartyp
+                            variablesValues[index][0]="string"
                     else:
-                        variablesValues[index][1]=vartyp
-                        variablesValues[index][0]="string"
+                        if isinstance(index2,int):  
+                            vartyp=variablesValues[index2][0]
+                        else:
+                            vartyp=index2[1]
+
+                        if vartyp is None:
+                            AddValueLFTF(child[0].text,"string","")
+                        else:
+                            AddValueLFTF(child[0].text,"string",vartyp)
+
 
             else:
                 exit(53)
@@ -730,7 +788,16 @@ def prochazej(root):
                 stackValues.append([child[0].attrib['type'],child[0].text])
             else:
                 index=VarCheckDefinovanaReturnIndex(child[0].text)
-                stackValues.append([variablesValues[index][0],variablesValues[index][1]])
+                if isinstance(index,int):
+                    if variablesValues[index][0] is None:
+                        exit(56)
+                    stackValues.append([variablesValues[index][0],variablesValues[index][1]])
+                else:
+                    if index[1] is None:
+                        exit(56)
+                    else:
+                        stackValues.append(index[1],index[2])
+
 
            
         elif opcode=="POPS":
