@@ -5,8 +5,8 @@ function ProchazeniSlozky($directorypath)
 {
     if (file_exists($directorypath))
     {
-        $open_dir=opendir($directorypath);
-        while($filecheck = readdir($open_dir))
+        $open_dir=opendir($directorypath); #otevření složky a čtení souborů z ní
+        while($filecheck = readdir($open_dir)) 
         {   
             if($filecheck == "." OR $filecheck == "..")
             {
@@ -23,53 +23,59 @@ function ProchazeniSlozky($directorypath)
                 }
             }
             
-            if(is_file($directorypath . "/" . $filecheck))
+            if(is_file($directorypath . "/" . $filecheck)) #pokud narazíme na soubor
             {
                 $directorypathfile=$directorypath . "/" . $filecheck;
                 $ext = pathinfo($directorypathfile, PATHINFO_EXTENSION);
                 
-                if ($ext == "src")
+                if ($ext == "src") #který je source 
                 {   $GLOBALS["CelkemTestu"]++;
-                    $onlyfilename=pathinfo($directorypathfile, PATHINFO_FILENAME);
-                    CheckOrCreateFiles($onlyfilename,$directorypath);
-                    if($GLOBALS["IntOnly"]==True)
+                    $onlyfilename=pathinfo($directorypathfile, PATHINFO_FILENAME); #získání pouhého jména
+                    CheckOrCreateFiles($onlyfilename,$directorypath); #funkce pro kontrolu existence dalších souborů
+                    if($GLOBALS["IntOnly"]==True) #pouze interpret tests
                     {
                     exec('python3.8 '.$GLOBALS["interpretfile"].' --source='.$directorypath.'/'.$filecheck.' --input='.$directorypath.'/'.$onlyfilename.'.in > outputinterpret', $output, $retval);
                     
                     
                     $filerc = fopen($directorypath.'/'.$onlyfilename.'.rc', 'r'); #otervreni souboru s ocekavanym RC a precteni prvniho stringu (zbytek ignorujeme)
-                    $rc = fgets($filerc); 
+                    $rc = fgets($filerc);  
                     fclose($filerc);
-                    if($rc==$retval)
+                    if($rc==$retval) #výsledek testu dle očekání
                     {   exec('diff outputinterpret '.$directorypath.'/'.$onlyfilename.'.out >diffinterpret');
-                        if ($rc==0)
+                        if ($rc==0) #rc 0 =>kontrola obsahu
                         {
                             if(filesize("diffinterpret")==0) #pokud v diffsouboru nic neni zapsano tak jsou stejne outputy
                             {
                                 $GLOBALS["CelkemTestuSpravne"]++;
                                 $GLOBALS["T1"]=$GLOBALS["T1"]."<tr>".PHP_EOL."<td>".$onlyfilename."</td>".PHP_EOL."<td>".$rc."</td>".PHP_EOL."<td>".$retval."</td>".PHP_EOL."<td>ANO</td>".PHP_EOL."<td style=\"color:green\">OK</td>".PHP_EOL."</tr>".PHP_EOL;
                             }
-                            else
+                            else #ruzne outputy, chyba
                             {
                                 $GLOBALS["T1"]=$GLOBALS["T1"]."<tr>".PHP_EOL."<td>".$onlyfilename."</td>".PHP_EOL."<td>".$rc."</td>".PHP_EOL."<td>".$retval."</td>".PHP_EOL."<td>NE</td>".PHP_EOL."<td style=\"color:red\">CHYBA</td>".PHP_EOL."</tr>".PHP_EOL;
                             }
                         }
-                        else
+                        else #spravne
                         {
                             $GLOBALS["CelkemTestuSpravne"]++;
                             $GLOBALS["T1"]=$GLOBALS["T1"]."<tr>".PHP_EOL."<td>".$onlyfilename."</td>".PHP_EOL."<td>".$rc."</td>".PHP_EOL."<td>".$retval."</td>".PHP_EOL."<td>---</td>".PHP_EOL."<td style=\"color:green\">OK</td>".PHP_EOL."</tr>".PHP_EOL;
                         }
                         
-                        #odstraneni vytvorenych souboru
-                        exec('rm diffinterpret');
-                        exec('rm outputinterpret');
+                        #odstraneni vytvorenych souboru file_exists pro jistotu
+                        if (file_exists('diffinterpret'))
+                        {
+                            exec('rm diffinterpret');
+                        }
+                        if (file_exists('outputinterpret'))
+                        {
+                            exec('rm outputinterpret');
+                        }
                     }
-                    else
+                    else #nesedí RC
                     {
                         $GLOBALS["T1"]=$GLOBALS["T1"]."<tr>".PHP_EOL."<td>".$onlyfilename."</td>".PHP_EOL."<td>".$rc."</td>".PHP_EOL."<td>".$retval."</td>".PHP_EOL."<td> </td>".PHP_EOL."<td style=\"color:red\">CHYBA</td>".PHP_EOL."</tr>".PHP_EOL;
                     }
                     }
-                    else if($GLOBALS["ParseOnly"]==True) 
+                    else if($GLOBALS["ParseOnly"]==True) #pouze parser testy
                     {   
                         $filerc = fopen($directorypath.'/'.$onlyfilename.'.rc', 'r'); #otervreni souboru s ocekavanym RC a precteni prvniho stringu (zbytek ignorujeme)
                         $rc = fgets($filerc); 
@@ -80,11 +86,11 @@ function ProchazeniSlozky($directorypath)
                         if($rc==$retval)
                         {
                             if($retval==0)
-                            {
+                            {   #presemerovani vystupu do dočasneho souboru
                                 exec('java -jar '.$GLOBALS["jexamxmlfile"].' parseout '.$directorypath.'/'.$onlyfilename.'.out delta.xml '. $GLOBALS["jexamcfgfile"]. ' >diff');
-                                $myFile = "diff";
-                                $lines = file($myFile);//file in to an array
-                                if ($lines[2] == "Two files are identical\n")
+                                $CheckFile = "diff"; 
+                                $lines = file($CheckFile);
+                                if ($lines[2] == "Two files are identical\n") #načteni soboru ana druhem řadku info o porovnani
                                 {
                                     $GLOBALS["CelkemTestuSpravne"]++;
                                     $GLOBALS["T1"]=$GLOBALS["T1"]."<tr>".PHP_EOL."<td>".$onlyfilename."</td>".PHP_EOL."<td>".$rc."</td>".PHP_EOL."<td>".$retval."</td>".PHP_EOL."<td>ANO</td>".PHP_EOL."<td style=\"color:green\">OK</td>".PHP_EOL."</tr>".PHP_EOL;                       
@@ -93,25 +99,35 @@ function ProchazeniSlozky($directorypath)
                                 {
                                     $GLOBALS["T1"]=$GLOBALS["T1"]."<tr>".PHP_EOL."<td>".$directorypath.'/'.$onlyfilename."</td>".PHP_EOL."<td>".$rc."</td>".PHP_EOL."<td>".$retval."</td>".PHP_EOL."<td>NE</td>".PHP_EOL."<td style=\"color:red\">CHYBA</td>".PHP_EOL."</tr>".PHP_EOL;
                                 }
-                                exec('rm diff');
-                                exec('rm delta.xml');
+                                if (file_exists('diff'))
+                                    {
+                                        exec('rm diff');
+                                    }
+                                if (file_exists('delta.xml'))
+                                    {
+                                        exec('rm delta.xml');
+                                    }
+                                
                             }
-                            else
+                            else #stejne RC
                             {
                                 $GLOBALS["CelkemTestuSpravne"]++;
                                 $GLOBALS["T1"]=$GLOBALS["T1"]."<tr>".PHP_EOL."<td>".$onlyfilename."</td>".PHP_EOL."<td>".$rc."</td>".PHP_EOL."<td>".$retval."</td>".PHP_EOL."<td>---</td>".PHP_EOL."<td style=\"color:green\">OK</td>".PHP_EOL."</tr>".PHP_EOL;
                             }
                         
                         }
-                        else
+                        else #nsedei RC
                         {
                             $GLOBALS["T1"]=$GLOBALS["T1"]."<tr>".PHP_EOL."<td>".$onlyfilename."</td>".PHP_EOL."<td>".$rc."</td>".PHP_EOL."<td>".$retval."</td>".PHP_EOL."<td> </td>".PHP_EOL."<td style=\"color:red\">CHYBA</td>".PHP_EOL."</tr>".PHP_EOL;
                         }
-                        exec('rm parseout');
+                        if (file_exists('parseout'))
+                            {
+                                exec('rm parseout');
+                            }
                         
     
                     }
-                    else
+                    else #vykonavani both testů
                     {
                         $filerc = fopen($directorypath.'/'.$onlyfilename.'.rc', 'r'); #otervreni souboru s ocekavanym RC a precteni prvniho stringu (zbytek ignorujeme)
                         $rc = fgets($filerc); 
@@ -120,7 +136,7 @@ function ProchazeniSlozky($directorypath)
                         exec('php7.4 '.$GLOBALS["parsefile"]. ' <'. $directorypath.'/'.$filecheck.' >parseout', $output, $retval);
                         if ($retval!=0) #pokud nastala chyba v parseru
                         {
-                            if ($retval==$rc)
+                            if ($retval==$rc) #chyba byla očekavana
                             {
                                 $GLOBALS["CelkemTestuSpravne"]++;
                                 $GLOBALS["T1"]=$GLOBALS["T1"]."<tr>".PHP_EOL."<td>".$onlyfilename."</td>".PHP_EOL."<td>".$rc."</td>".PHP_EOL."<td>".$retval."</td>".PHP_EOL."<td>ANO</td>".PHP_EOL."<td style=\"color:green\">OK(P)</td>".PHP_EOL."</tr>".PHP_EOL;
@@ -129,15 +145,18 @@ function ProchazeniSlozky($directorypath)
                             {
                                 $GLOBALS["T1"]=$GLOBALS["T1"]."<tr>".PHP_EOL."<td>".$onlyfilename."</td>".PHP_EOL."<td>".$rc."</td>".PHP_EOL."<td>".$retval."</td>".PHP_EOL."<td>NE</td>".PHP_EOL."<td style=\"color:red\">CHYBA(P)</td>".PHP_EOL."</tr>".PHP_EOL;
                             }
-                            exec('rm parseout');
+                            if (file_exists('parseout')) 
+                            {
+                                exec('rm parseout');
+                            }
                         }
                         else
                         {
                             exec('python3.8 '.$GLOBALS["interpretfile"].' --source=parseout --input='.$directorypath.'/'.$onlyfilename.'.in > outputinterpret', $output, $retval);
                     
-                            if($rc==$retval)
+                            if($rc==$retval) #spravne
                             {   exec('diff outputinterpret '.$directorypath.'/'.$onlyfilename.'.out >diffinterpret');
-                                if ($rc==0)
+                                if ($rc==0) #spravne ale treba kontrola out
                                 {
                                     if(filesize("diffinterpret")==0) #pokud v diffsouboru nic neni zapsano tak jsou stejne outputy
                                     {
@@ -149,22 +168,31 @@ function ProchazeniSlozky($directorypath)
                                         $GLOBALS["T1"]=$GLOBALS["T1"]."<tr>".PHP_EOL."<td>".$onlyfilename."</td>".PHP_EOL."<td>".$rc."</td>".PHP_EOL."<td>".$retval."</td>".PHP_EOL."<td>NE</td>".PHP_EOL."<td style=\"color:red\">CHYBA</td>".PHP_EOL."</tr>".PHP_EOL;
                                     }
                                 }
-                                else
+                                else #spravne
                                 {
                                     $GLOBALS["CelkemTestuSpravne"]++;
                             
                                     $GLOBALS["T1"]=$GLOBALS["T1"]."<tr>".PHP_EOL."<td>".$onlyfilename."</td>".PHP_EOL."<td>".$rc."</td>".PHP_EOL."<td>".$retval."</td>".PHP_EOL."<td>---</td>".PHP_EOL."<td style=\"color:green\">OK</td>".PHP_EOL."</tr>".PHP_EOL;
                                 }
                                 
-                            
-                                exec('rm diffinterpret');
+                                if (file_exists('diffinterpret')) #docasne soubory
+                                {
+                                    exec('rm diffinterpret');
+                                }
+                                
                             }
-                            else
+                            else #spatne
                             {
                                 $GLOBALS["T1"]=$GLOBALS["T1"]."<tr>".PHP_EOL."<td>".$onlyfilename."</td>".PHP_EOL."<td>".$rc."</td>".PHP_EOL."<td>".$retval."</td>".PHP_EOL."<td> </td>".PHP_EOL."<td style=\"color:red\">CHYBA</td>".PHP_EOL."</tr>".PHP_EOL;
                             }
-                        exec('rm parseout');
-                        exec('rm outputinterpret');
+                            if (file_exists('parseout')) #docasne soubory
+                            {
+                                exec('rm parseout');
+                            }
+                            if (file_exists('outputinterpret'))
+                            {
+                                exec('rm outputinterpret');
+                            }
                         }
                     
                         
@@ -232,6 +260,7 @@ if (file_exists('parseout.log'))
      exec('rm parseout.log');
     }
 }
+#----------------------------------------------------------------------------------------------------------------------
 $BylDircetory=$BylParseScript=$BylInterpretScript=$ParseOnly=$IntOnly=$Byljexamxml=$Byljexamcfg=false;
 $BylRecursive=false;
 $CelkemTestu=0;
@@ -256,40 +285,53 @@ if ($argv[1]=="--help")
         }
         else  exit(10); 
     }   
-for ($i=1; $i<$argc; $i++)
+for ($i=1; $i<$argc; $i++) #cyklus která projde všechny zadnané argumenty
 {
     #echo ($argv[$i].PHP_EOL);
-    if ($argv[$i]=="--help")
+    if ($argv[$i]=="--help") #pokud je zadána help jinde než osamoceně => chyba
     {
         exit(10);
     } 
     else if (preg_match("/^--directory=(\S)*$/",$argv[$i]))
     {   
-        $BylDircetory=true;
-        $splitted=explode("=",$argv[$i]);
-        $directorypath=$splitted[1];
-        if (empty($directorypath))
+        $BylDircetory=true; #nastavení na true pro následnou kontroli
+        $splitted=explode("=",$argv[$i]); #rozdělení na část před = a po a uložení pouze cesty
+        $directorypath=$splitted[1]; 
+        if (empty($directorypath)) # pokud pouze --directory= tak aktuílní adresář
         {
             $directorypath=getcwd();
         }
+        if (!(is_dir($directorypath))) #pokud zadáno není cesta do složky, tak chyba
+        {
+            exit(41);
+        }
     }
-    else if ($argv[$i]=="--recursive")
+    else if ($argv[$i]=="--recursive")   #rekurzivní procházení složek
     {
         $BylRecursive=true;
     }
-    else if (preg_match("/^--parse-script=(\S)*$/",$argv[$i]))
+    else if (preg_match("/^--parse-script=(\S)*$/",$argv[$i])) #cesta k parse file
     {
         $pom=explode("=",$argv[$i]);
         $parsefile=$pom[1];
+        if (!(file_exists($parsefile))) #kontrola zda soubor existuje
+        {
+            exit(41);
+        }
         $BylParseScript=true;
     }
-    else if (preg_match("/^--int-script=(\S)+$/",$argv[$i]))
+    else if (preg_match("/^--int-script=(\S)+$/",$argv[$i])) #cesta k interpret file
     {
         $pom=explode("=",$argv[$i]);
         $interpretfile=$pom[1];
+        print($interpretfile);
+        if (!(file_exists($interpretfile)))
+            {
+                exit(41);
+            }
         $BylInterpretScript=true;
     }
-    else if ($argv[$i]=="--parse-only")
+    else if ($argv[$i]=="--parse-only") #přepínače pro vykonávání kontroly pouze části
     {
         $ParseOnly=true;
     }
@@ -297,25 +339,32 @@ for ($i=1; $i<$argc; $i++)
     {
         $IntOnly=true;
     }
-    else if (preg_match("/^--jexamxml=(\S)+$/",$argv[$i]))
+    else if (preg_match("/^--jexamxml=(\S)+$/",$argv[$i])) #pro jexaxml když zadáno
     {    
         $Byljexamxml=true;
         $pom=explode("=",$argv[$i]);
         $jexamxmlfile=$pom[1];
+        if (!(file_exists($jexamxmlfile)))
+        {
+            exit(41);
+        }
     }
     else if (preg_match("/^--jexamcfg=(\S)+$/",$argv[$i]))
     {    
         $Byljexamcfg=true;
         $pom=explode("=",$argv[$i]);
         $jexamcfgfile=$pom[1];
+        if (!(file_exists($jexamcfgfile)))
+        {
+            exit(41);
+        }
     }
     else
     {
-        echo("spatny argument vstupu"); #DEBUG
-        exit(10); 
+        exit(10); #chyba - zadn neznámý argument
     }
 }
-if ($ParseOnly==true)
+if ($ParseOnly==true)  #kontrola že nekoliduje prase only s int only a cestou k němu a naopak
 {
     if ($IntOnly==true||$BylInterpretScript==true)
     {
@@ -329,13 +378,17 @@ if ($IntOnly==true)
         exit(10);
     }
 }
+if ($BylDircetory==false) #pokud nebyly zadány přepínače, tak je brána aktuálni složka, v ní parse.php a intepret.py a defuaultní umístění jeaxamxml
+{
+    $directorypath=getcwd();
+}
 if ($BylParseScript==false)
 {
-    $parsefile=getcwd()."/parse.php";  #TODO LINUX
+    $parsefile=getcwd()."/parse.php"; 
 }
 if ($BylInterpretScript==false)
 {
-    $interpretfile=getcwd()."/interpret.py"; #TODO LINUX
+    $interpretfile=getcwd()."/interpret.py"; 
 }
 if ($Byljexamxml==false)
 {
@@ -346,8 +399,8 @@ if ($Byljexamcfg==false)
     $jexamcfgfile="/pub/courses/ipp/jexamxml/options";
 }
 
-HTMLStart();
-ProchazeniSlozky($directorypath);
-HTMLEnd();
+HTMLStart(); #vypis startu html
+ProchazeniSlozky($directorypath); #volani funcke prochazeni složky
+HTMLEnd(); #vypis konce html
 exit(0);
 ?>
