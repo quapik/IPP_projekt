@@ -69,7 +69,7 @@ def CheckPocetArgumentuInstukce(child,pocet):
                 exit(32)
         CheckTypes(child[i].attrib['type'],child[i].text)
         text=str(child[i])
-        if text[10:13]!="arg":
+        if text[10:13]!="arg" or int(text[13])!=(i+1): 
             exit(32)
     try:
         child[pocet].attrib['type']
@@ -77,7 +77,7 @@ def CheckPocetArgumentuInstukce(child,pocet):
         pass
     else:
         errorprint("Špatný počet argumentů") #DEBUG
-        exit(32)
+        exit(32) 
 #funkce pro kontrolu zda souhlasí datový typ - je předán celý argument funkce a podle datového typu se kontroluje a vrací samotná hodnota
 def VarTypeCheckReturn(child,datovytyp):
     if(child.attrib['type']==datovytyp):
@@ -96,7 +96,7 @@ def VarTypeCheckReturn(child,datovytyp):
                     exit(56) 
                 else:
                     exit(53)
-        elif child.text[0:2]=="TF":
+        elif child.text[0:2]=="TF": #pokud má být proměnná na TF
             if BylCreatframe==True:     
                 try:
                     index=TFnames.index(child.text[3:len(child.text)])
@@ -112,9 +112,9 @@ def VarTypeCheckReturn(child,datovytyp):
                         exit(53)
             else:
                 exit(55)
-        else:
+        else: #pokud má být proměnná na LF
             try:
-                names_tmp=LFStackNames.pop()
+                names_tmp=LFStackNames.pop() #pokus o získání hdonot
                 values_tmp=LFStackValues.pop()
             except IndexError:
                 errorprint("Chyba POPFRAME-prázdný zásobník")
@@ -125,7 +125,7 @@ def VarTypeCheckReturn(child,datovytyp):
                 except:
                     exit(54)
                 else:
-                    LFStackNames.append(list(names_tmp))
+                    LFStackNames.append(list(names_tmp)) #vraceni zpět na LF
                     LFStackValues.append(list(values_tmp))
                     if values_tmp[index][0]== datovytyp:
                         return values_tmp[index][1]
@@ -406,14 +406,14 @@ def prochazej(root):
             if BylCreatframe == False:
                 errorprint("Pokus o přístup k nedefinovanému rámci") #DEBUG
                 exit(55)
-            LFStackNames.append(list(TFnames))
+            LFStackNames.append(list(TFnames)) #přesun ramcu na LF
             LFStackValues.append(list(TFValues))
-            TFnames.clear()
+            TFnames.clear() #vyčistění TF
             TFValues.clear()
             BylCreatframe=False
         elif (opcode=="POPFRAME"):
             try:
-                TFnames=LFStackNames.pop()
+                TFnames=LFStackNames.pop() #pokus o popnutí LF
                 TFValues=LFStackValues.pop()
             except IndexError:
                 errorprint("Chyba POPFRAME-prazdny zasobnik")
@@ -425,7 +425,7 @@ def prochazej(root):
                 index=VarCheckDefinovanaReturnIndex(child[0].text)
                 variablesValues[index][0]="int"
                 try:
-                    cislo1=int(VarTypeCheckReturn(child[1],"int"))
+                    cislo1=int(VarTypeCheckReturn(child[1],"int")) #pokud int tak zkoušíme zkonvertovat
                     cislo2=int(VarTypeCheckReturn(child[2],"int"))         
                 except ValueError:
                     exit(53)
