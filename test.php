@@ -385,10 +385,18 @@ if ($BylDircetory==false) #pokud nebyly zadány přepínače, tak je brána aktu
 if ($BylParseScript==false)
 {
     $parsefile=getcwd()."/parse.php"; 
+    if (!(file_exists($parsefile)))
+        {
+            exit(41);
+        }
 }
 if ($BylInterpretScript==false)
 {
     $interpretfile=getcwd()."/interpret.py"; 
+    if (!(file_exists($interpretfile)))
+        {
+            exit(41);
+        }
 }
 if ($Byljexamxml==false)
 {
